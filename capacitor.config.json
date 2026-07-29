@@ -1,0 +1,15 @@
+{
+  "appId": "com.ashlan.rung",
+  "appName": "Rung",
+  "webDir": "dist",
+  "ios": {
+    "contentInset": "always",
+    "backgroundColor": "#F2F3F0"
+  },
+  "android": {
+    "backgroundColor": "#F2F3F0"
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}

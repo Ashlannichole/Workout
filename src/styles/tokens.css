@@ -1,0 +1,86 @@
+/* ============================================================
+   RUNG — design tokens
+
+   Palette is lifted from IWF competition plate colour coding
+   (red 25kg / blue 20kg / yellow 15kg / green 10kg / white 5kg).
+   In a gym, colour already encodes load. We keep that meaning:
+   colour here is a data channel, never decoration.
+
+     plate-red     heaviest / max effort / PR attempt territory
+     plate-yellow  attention — PR-eligible weeks, unlogged work
+     plate-blue    primary interactive, the app's own voice
+     plate-green   done, logged, banked
+   ============================================================ */
+
+:root {
+  /* --- surfaces: chalk on rubber flooring --- */
+  --chalk: #f2f3f0; /* cool-neutral, faintly green. NOT cream. */
+  --chalk-sunk: #e7e9e4; /* recessed wells, tracks, empty states */
+  --card: #ffffff;
+  --rubber: #16181a; /* app chrome, header, tab bar */
+  --rubber-soft: #23272a;
+
+  /* --- ink --- */
+  --ink: #16181a;
+  --ink-2: #4a5058; /* secondary copy */
+  --ink-3: #858d96; /* captions, disabled */
+  --ink-inv: #f2f3f0;
+
+  /* --- plate colours (functional) --- */
+  --plate-red: #c6262e;
+  --plate-yellow: #f2c300;
+  --plate-blue: #0e4fa3;
+  --plate-blue-lift: #1466cc;
+  --plate-green: #1b7f4f;
+
+  /* tints for fills behind plate colours */
+  --tint-blue: #e3ecf8;
+  --tint-green: #e2f0e9;
+  --tint-yellow: #fdf3d1;
+  --tint-red: #f8e4e5;
+
+  --line: #d6d9d3;
+  --line-strong: #b8bdb6;
+
+  /* --- type --- */
+  --font-display: 'Archivo Black', 'Arial Black', system-ui, sans-serif;
+  --font-body: 'Hanken Grotesk', system-ui, -apple-system, sans-serif;
+  --font-data: 'Martian Mono', ui-monospace, 'SF Mono', monospace;
+
+  /* Type scale — 1.25 minor third off a 16px body */
+  --t-hero: 2.25rem;
+  --t-xl: 1.5rem;
+  --t-lg: 1.1875rem;
+  --t-md: 1rem;
+  --t-sm: 0.875rem;
+  --t-xs: 0.75rem;
+  --t-2xs: 0.6875rem;
+
+  /* --- space (4pt) --- */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 20px;
+  --s6: 24px;
+  --s8: 32px;
+  --s10: 40px;
+  --s12: 48px;
+
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-pill: 999px;
+
+  --shadow-card: 0 1px 2px rgba(22, 24, 26, 0.06), 0 4px 14px rgba(22, 24, 26, 0.05);
+  --shadow-lift: 0 2px 6px rgba(22, 24, 26, 0.1), 0 12px 32px rgba(22, 24, 26, 0.12);
+
+  /* iOS safe areas — Capacitor + PWA standalone */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  --tabbar-h: 58px;
+  --shell-max: 460px;
+
+  --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+}

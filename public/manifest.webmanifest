@@ -1,0 +1,11 @@
+{
+  "name": "Rung",
+  "short_name": "Rung",
+  "description": "Personalized workout plans with automatic weight progression.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#F2F3F0",
+  "theme_color": "#0E4FA3",
+  "orientation": "portrait",
+  "icons": [{ "src": "./favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
