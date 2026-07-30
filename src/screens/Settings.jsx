@@ -1,10 +1,10 @@
 import { useApp } from '../state/AppContext.jsx'
 import AppBar from '../components/AppBar.jsx'
 import Choice from '../components/Choice.jsx'
-import { WEEKDAYS, dateKey } from '../lib/schedule.js'
+import { WEEKDAYS, dateKey, fillSchedule } from '../lib/schedule.js'
 
 export default function Settings({ onNavigate }) {
-  const { state, dispatch, resetAll, ensureSchedule } = useApp()
+  const { state, dispatch, resetAll, plans } = useApp()
   const availableDays = state.schedule.availableDays
 
   function toggleDay(id) {
@@ -13,14 +13,28 @@ export default function Settings({ onNavigate }) {
       : [...availableDays, id].sort()
 
     // Auto-filled future days need to adapt to the new availability; a day
-    // the user has hand-edited stays put either way.
+    // the user has hand-edited stays put either way. Refill is computed
+    // inline (rather than via a follow-up ensureSchedule() call) since
+    // dispatch doesn't take effect until the next render — a call right
+    // after dispatch would still see the old assignments.
     const todayKey = dateKey(new Date())
     const removeDates = Object.entries(state.schedule.assignments)
       .filter(([key, a]) => key >= todayKey && !a.manual)
       .map(([key]) => key)
+    const removeSet = new Set(removeDates)
+    const survivingAssignments = Object.fromEntries(
+      Object.entries(state.schedule.assignments).filter(([key]) => !removeSet.has(key)),
+    )
+    const delta = fillSchedule({
+      plans,
+      logs: state.logs,
+      schedule: { availableDays: days, assignments: survivingAssignments },
+    })
 
-    dispatch({ type: 'schedule/update', patch: { availableDays: days, removeDates } })
-    ensureSchedule()
+    dispatch({
+      type: 'schedule/update',
+      patch: { availableDays: days, removeDates, assignments: delta },
+    })
   }
 
   return (

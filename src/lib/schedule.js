@@ -76,8 +76,12 @@ export function fillSchedule({ plans, logs, schedule, from = new Date(), horizon
     const key = dateKey(cursor)
     if (!(key in assignments) && !(key in delta)) {
       const weekday = cursor.getDay()
-      if (activePlans.length === 0 || !availableDays.includes(weekday)) {
+      if (!availableDays.includes(weekday)) {
         delta[key] = { rest: true }
+      } else if (activePlans.length === 0) {
+        // No active plan to assign yet — leave this date unfilled rather
+        // than permanently stamping it rest, so a plan created later still
+        // gets a chance to claim it on the next fill.
       } else {
         for (const p of activePlans) credit.set(p.id, credit.get(p.id) + (p.frequency || 1))
         let winner = activePlans[0]
