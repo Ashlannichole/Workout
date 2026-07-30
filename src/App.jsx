@@ -7,6 +7,9 @@ import Build from './screens/Build.jsx'
 import Plan from './screens/Plan.jsx'
 import Session from './screens/Session.jsx'
 import History from './screens/History.jsx'
+import Calendar from './screens/Calendar.jsx'
+import Settings from './screens/Settings.jsx'
+import PlanFinishedBanner from './components/PlanFinishedBanner.jsx'
 
 /**
  * Routing is a single piece of state rather than a router library.
@@ -36,16 +39,20 @@ export default function App() {
     build: <Build onNavigate={navigate} />,
     plan: <Plan planId={params.planId} onNavigate={navigate} />,
     session: <Session planId={params.planId} dayId={params.dayId} onNavigate={navigate} />,
+    calendar: <Calendar onNavigate={navigate} />,
+    settings: <Settings onNavigate={navigate} />,
     history: <History onNavigate={navigate} />,
   }
 
-  // The session screen is a detail view, so it highlights the tab it came from.
-  const activeTab = route === 'session' ? 'plan' : route
+  // Session, Settings, and History are detail views pushed on top of a tab,
+  // so they highlight the tab they came from rather than getting their own.
+  const activeTab = route === 'session' ? 'plan' : route === 'settings' || route === 'history' ? 'today' : route
 
   return (
     <div className="shell">
       {screens[route] ?? screens.today}
       <TabBar route={activeTab} onNavigate={(r) => navigate(r)} />
+      <PlanFinishedBanner onNavigate={navigate} />
     </div>
   )
 }

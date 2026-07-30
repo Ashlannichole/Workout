@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { useApp } from '../state/AppContext.jsx'
 import Choice from '../components/Choice.jsx'
 import { EQUIPMENT, GOALS, ACTIVITY_LEVELS } from '../data/exercises.js'
+import { WEEKDAYS } from '../lib/schedule.js'
 
-const STEPS = 4
+const STEPS = 5
 
 export default function Onboarding() {
   const { dispatch } = useApp()
@@ -18,8 +19,11 @@ export default function Onboarding() {
     goal: '',
     units: 'lb',
   })
+  const [availableDays, setAvailableDays] = useState([])
 
   const set = (patch) => setP((prev) => ({ ...prev, ...patch }))
+  const toggleDay = (id) =>
+    setAvailableDays((days) => (days.includes(id) ? days.filter((d) => d !== id) : [...days, id].sort()))
 
   const canAdvance =
     [
@@ -27,11 +31,16 @@ export default function Onboarding() {
       Boolean(p.age && p.weightLb && p.gender),
       Boolean(p.activityLevel && p.equipment),
       Boolean(p.goal),
+      availableDays.length > 0,
     ][step] ?? false
 
   function next() {
-    if (step < STEPS - 1) setStep(step + 1)
-    else dispatch({ type: 'onboard/finish', profile: p })
+    if (step < STEPS - 1) {
+      setStep(step + 1)
+      return
+    }
+    dispatch({ type: 'onboard/finish', profile: p })
+    dispatch({ type: 'schedule/update', patch: { availableDays } })
   }
 
   return (
@@ -181,6 +190,28 @@ export default function Onboarding() {
                   sub={g.sub}
                   selected={p.goal === g.id}
                   onClick={() => set({ goal: g.id })}
+                />
+              ))}
+            </div>
+          </>
+        )}
+
+        {step === 4 && (
+          <>
+            <h2 className="h2" style={{ marginBottom: 'var(--s2)' }}>
+              Which days do you train?
+            </h2>
+            <p className="muted" style={{ marginBottom: 'var(--s6)' }}>
+              Rung schedules your plans across these days automatically. You can change this or
+              hand-edit any single day later.
+            </p>
+            <div className="choices choices--3">
+              {WEEKDAYS.map((d) => (
+                <Choice
+                  key={d.id}
+                  title={d.label}
+                  selected={availableDays.includes(d.id)}
+                  onClick={() => toggleDay(d.id)}
                 />
               ))}
             </div>

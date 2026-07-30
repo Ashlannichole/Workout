@@ -1,10 +1,10 @@
-import { IconToday, IconBuild, IconPlan, IconHistory } from './Icons.jsx'
+import { IconToday, IconBuild, IconPlan, IconCalendar } from './Icons.jsx'
 
 const TABS = [
   { id: 'today', label: 'Today', Icon: IconToday },
   { id: 'build', label: 'Build', Icon: IconBuild },
   { id: 'plan', label: 'Plan', Icon: IconPlan },
-  { id: 'history', label: 'History', Icon: IconHistory },
+  { id: 'calendar', label: 'Calendar', Icon: IconCalendar },
 ]
 
 export default function TabBar({ route, onNavigate }) {

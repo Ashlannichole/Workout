@@ -14,12 +14,15 @@ import { isLoaded, isPrWeek, roundLoad } from '../lib/progression.js'
  * you deliberately tap the number.
  */
 export default function Session({ planId, dayId, onNavigate }) {
-  const { state, getLog, setLog, prescriptionFor } = useApp()
+  const { state, getLog, setLog, prescriptionFor, activeWeekForPlan } = useApp()
   const plan = state.plans[planId]
   const day = plan?.days.find((d) => d.id === dayId) ?? plan?.days[0]
   const [rest, setRest] = useState(null) // { seconds, key }
 
-  const week = plan?.currentWeek ?? 1
+  // Derived from what's actually been logged, not whatever week the Plan
+  // screen's strip happens to be showing — a logged set always attributes
+  // to the plan's true active week.
+  const week = plan ? activeWeekForPlan(planId) : 1
 
   const startRest = useCallback((seconds) => {
     setRest({ seconds, key: Date.now() })

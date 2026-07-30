@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useApp } from '../state/AppContext.jsx'
 import AppBar from '../components/AppBar.jsx'
 import Choice from '../components/Choice.jsx'
@@ -14,6 +14,33 @@ import { estimateMinutes } from '../lib/generator.js'
 import { uid } from '../lib/storage.js'
 
 const DURATIONS = [20, 30, 45, 60, 75, 90]
+const FREQUENCIES = [2, 3, 4, 5]
+
+/** Sensible sessions/week starting point per modality/goal — always editable. */
+function defaultFrequency(modality, goal) {
+  if (modality === 'pilates' || modality === 'calisthenics') return 2
+  if (goal === 'tone') return 3
+  return 3
+}
+
+/** Round-robin split of the selected muscle groups across N day-templates,
+    so a multi-session/week plan gets distinct sessions instead of the same
+    one repeated (which would also collide under the log-identity scheme). */
+function splitGroups(groups, count) {
+  const base = groups.length ? groups : ['full_body']
+  if (count <= 1) return [base]
+  const buckets = Array.from({ length: count }, () => [])
+  base.forEach((g, i) => buckets[i % count].push(g))
+  return buckets.map((b) => (b.length ? b : base))
+}
+
+function nameFor(groupIds, index) {
+  const names = groupIds
+    .map((g) => MUSCLE_GROUPS.find((m) => m.id === g)?.name)
+    .filter(Boolean)
+    .join(' + ')
+  return names || `Day ${index + 1}`
+}
 
 export default function Build({ onNavigate }) {
   const { state, buildDay, createPlan } = useApp()
@@ -25,59 +52,83 @@ export default function Build({ onNavigate }) {
   const [groups, setGroups] = useState(['chest', 'back'])
   const [duration, setDuration] = useState(45)
   const [weeks, setWeeks] = useState(8)
-  const [seed, setSeed] = useState(() => Date.now())
-  const [preview, setPreview] = useState(null)
+  const [frequency, setFrequency] = useState(() => defaultFrequency('weightlifting', 'general'))
+  const [frequencyTouched, setFrequencyTouched] = useState(false)
+  const [baseSeed, setBaseSeed] = useState(() => Date.now())
+  const [previews, setPreviews] = useState(null) // array, one per day-template
+
+  // Re-suggest a frequency when modality/goal change, unless the user has
+  // deliberately picked one already.
+  useEffect(() => {
+    if (!frequencyTouched) setFrequency(defaultFrequency(modality, goal))
+  }, [modality, goal, frequencyTouched])
 
   const toggleGroup = (id) =>
     setGroups((g) => (g.includes(id) ? g.filter((x) => x !== id) : [...g, id]))
 
-  function generate(nextSeed = Date.now()) {
-    setSeed(nextSeed)
-    setPreview(
-      buildDay({
-        muscleGroups: groups.length ? groups : ['full_body'],
+  function generate(nextBaseSeed = Date.now()) {
+    setBaseSeed(nextBaseSeed)
+    const buckets = splitGroups(groups, frequency)
+    setPreviews(
+      buckets.map((bucket, i) =>
+        buildDay({
+          muscleGroups: bucket,
+          durationMin: duration,
+          goal,
+          equipment,
+          modality,
+          seed: nextBaseSeed + i,
+        }),
+      ),
+    )
+  }
+
+  function regenerateOne(i) {
+    setPreviews((prev) => {
+      const bucket = prev[i].muscleGroups
+      const next = [...prev]
+      next[i] = buildDay({
+        muscleGroups: bucket,
         durationMin: duration,
         goal,
         equipment,
         modality,
-        seed: nextSeed,
-      }),
-    )
+        seed: Date.now(),
+      })
+      return next
+    })
   }
 
-  const previewMinutes = useMemo(
-    () => (preview ? estimateMinutes(preview.exercises, goal) : 0),
-    [preview, goal],
+  const totalExercises = useMemo(
+    () => (previews ? previews.reduce((sum, p) => sum + p.exercises.length, 0) : 0),
+    [previews],
   )
+  const hasAnyExercises = previews?.some((p) => p.exercises.length > 0)
 
   function savePlan() {
-    if (!preview?.exercises.length) return
-    const groupNames = groups
-      .map((g) => MUSCLE_GROUPS.find((m) => m.id === g)?.name)
-      .filter(Boolean)
-      .join(' + ')
+    if (!hasAnyExercises) return
+    const days = previews.map((p, i) => ({
+      id: uid(),
+      name: nameFor(p.muscleGroups, i),
+      muscleGroups: p.muscleGroups,
+      durationMin: duration,
+      exercises: p.exercises,
+    }))
     const plan = createPlan({
-      name: groupNames || 'Full body',
+      name: nameFor(groups, 0),
       weeks,
       goal,
       equipment,
       modality,
-      days: [
-        {
-          id: uid(),
-          name: groupNames || 'Full body',
-          muscleGroups: groups,
-          durationMin: duration,
-          exercises: preview.exercises,
-        },
-      ],
+      days,
+      frequency,
     })
     onNavigate('plan', { planId: plan.id })
   }
 
   return (
     <>
-      <AppBar eyebrow="New session" title="Build" />
+      <AppBar eyebrow="New plan" title="Build" />
       <div className="scroll">
         <section className="section" style={{ marginTop: 'var(--s5)' }}>
           <span className="field__label">Equipment</span>
@@ -149,6 +200,23 @@ export default function Build({ onNavigate }) {
         </section>
 
         <section className="section">
+          <span className="field__label">Sessions per week</span>
+          <div className="choices choices--3" style={{ marginTop: 'var(--s2)' }}>
+            {FREQUENCIES.map((f) => (
+              <Choice
+                key={f}
+                title={`${f}x`}
+                selected={frequency === f}
+                onClick={() => {
+                  setFrequencyTouched(true)
+                  setFrequency(f)
+                }}
+              />
+            ))}
+          </div>
+        </section>
+
+        <section className="section">
           <span className="field__label">Plan length</span>
           <div className="choices choices--3" style={{ marginTop: 'var(--s2)' }}>
             {PLAN_LENGTHS.map((w) => (
@@ -165,73 +233,94 @@ export default function Build({ onNavigate }) {
 
         <div style={{ marginTop: 'var(--s8)' }}>
           <button className="btn btn--dark btn--block" onClick={() => generate()}>
-            {preview ? 'Rebuild session' : 'Build session'}
+            {previews ? 'Rebuild plan' : 'Build plan'}
           </button>
         </div>
 
-        {preview && (
+        {previews && (
           <section className="section">
             <div className="section__head">
-              <h2 className="h2">The session</h2>
+              <h2 className="h2">The plan</h2>
               <span className="label data">
-                ~{previewMinutes} min · {preview.exercises.length} lifts
+                {frequency}x/week · {totalExercises} lifts total
               </span>
             </div>
 
-            {preview.notes.map((n, i) => (
-              <p key={i} className="muted" style={{ marginBottom: 'var(--s3)' }}>
-                {n}
-              </p>
-            ))}
-
-            {preview.exercises.length === 0 ? (
+            {!hasAnyExercises && (
               <div className="empty">
                 <p className="muted">
                   Nothing in the library matches that combination. Widen the muscle groups or add
                   time.
                 </p>
               </div>
-            ) : (
-              <ul className="stack">
-                {preview.exercises.map((item, i) => {
-                  const ex = EXERCISE_BY_ID[item.exerciseId]
-                  return (
-                    <li key={item.exerciseId} className="exrow">
-                      <div className="exrow__top">
-                        <div>
-                          <div className="exrow__name">{ex.name}</div>
-                          <div className="exrow__meta">
-                            {ex.primary.join(' · ')} {ex.compound ? '· compound' : ''}
-                          </div>
-                        </div>
-                        <div className="exrow__load">
-                          <div className="exrow__weight">
-                            {item.sets}×{item.reps}
-                          </div>
-                          <div className="exrow__delta" style={{ color: 'var(--ink-3)' }}>
-                            {item.restSec}s rest
-                          </div>
-                        </div>
-                      </div>
-                      <p className="muted" style={{ fontSize: 'var(--t-2xs)' }}>
-                        {ex.cue}
-                      </p>
-                    </li>
-                  )
-                })}
-              </ul>
             )}
+
+            <div className="stack" style={{ gap: 'var(--s5)' }}>
+              {previews.map((preview, i) => {
+                const minutes = estimateMinutes(preview.exercises, goal)
+                return (
+                  <div key={i} className="card card--pad">
+                    <div className="spread" style={{ marginBottom: 'var(--s2)' }}>
+                      <span className="label">{nameFor(preview.muscleGroups, i)}</span>
+                      <span className="label data">
+                        ~{minutes} min · {preview.exercises.length} lifts
+                      </span>
+                    </div>
+
+                    {preview.notes.map((n, ni) => (
+                      <p key={ni} className="muted" style={{ fontSize: 'var(--t-2xs)', marginBottom: 'var(--s2)' }}>
+                        {n}
+                      </p>
+                    ))}
+
+                    <ul className="stack">
+                      {preview.exercises.map((item) => {
+                        const ex = EXERCISE_BY_ID[item.exerciseId]
+                        return (
+                          <li key={item.exerciseId} className="exrow">
+                            <div className="exrow__top">
+                              <div>
+                                <div className="exrow__name">{ex.name}</div>
+                                <div className="exrow__meta">
+                                  {ex.primary.join(' · ')} {ex.compound ? '· compound' : ''}
+                                </div>
+                              </div>
+                              <div className="exrow__load">
+                                <div className="exrow__weight">
+                                  {item.sets}×{item.reps}
+                                </div>
+                                <div className="exrow__delta" style={{ color: 'var(--ink-3)' }}>
+                                  {item.restSec}s rest
+                                </div>
+                              </div>
+                            </div>
+                          </li>
+                        )
+                      })}
+                    </ul>
+
+                    <button
+                      className="btn btn--ghost btn--sm"
+                      style={{ marginTop: 'var(--s3)' }}
+                      onClick={() => regenerateOne(i)}
+                    >
+                      Give me a different one
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
 
             <div className="stack" style={{ marginTop: 'var(--s5)' }}>
               <button
                 className="btn btn--primary btn--block"
-                disabled={!preview.exercises.length}
+                disabled={!hasAnyExercises}
                 onClick={savePlan}
               >
                 Start a {weeks}-week plan with this
               </button>
-              <button className="btn btn--ghost btn--block" onClick={() => generate(seed + 1)}>
-                Give me a different one
+              <button className="btn btn--ghost btn--block" onClick={() => generate(baseSeed + 1)}>
+                Regenerate everything
               </button>
             </div>
           </section>

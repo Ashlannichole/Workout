@@ -4,7 +4,7 @@ import AppBar from '../components/AppBar.jsx'
 import { EXERCISE_BY_ID } from '../data/exercises.js'
 
 export default function History({ onNavigate }) {
-  const { state, resetAll } = useApp()
+  const { state } = useApp()
 
   const entries = useMemo(
     () =>
@@ -30,7 +30,12 @@ export default function History({ onNavigate }) {
 
   return (
     <>
-      <AppBar eyebrow="Everything logged" title="History" />
+      <AppBar
+        eyebrow="Everything logged"
+        title="History"
+        action="Done"
+        onAction={() => onNavigate('settings')}
+      />
       <div className="scroll">
         {entries.length === 0 ? (
           <div className="empty" style={{ marginTop: 'var(--s10)' }}>
@@ -93,20 +98,6 @@ export default function History({ onNavigate }) {
             </section>
           </>
         )}
-
-        <section className="section">
-          <button
-            className="btn btn--ghost btn--block"
-            onClick={() => {
-              if (confirm('Erase your profile, plans, and every logged set?')) resetAll()
-            }}
-          >
-            Erase all data
-          </button>
-          <p className="muted" style={{ fontSize: 'var(--t-2xs)', marginTop: 'var(--s2)' }}>
-            Everything is stored on this device only. Nothing is uploaded.
-          </p>
-        </section>
       </div>
     </>
   )

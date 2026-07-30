@@ -24,6 +24,10 @@ export const emptyState = {
   plans: {}, // planId -> plan
   activePlanId: null,
   logs: {}, // logId -> { planId, dayId, exerciseId, week, sets, completedAt }
+  schedule: {
+    availableDays: [1, 3, 5], // 0=Sun..6=Sat (Date#getDay())
+    assignments: {}, // 'YYYY-MM-DD' -> { planId, dayId, manual? } | { rest: true, manual? }
+  },
 }
 
 /* Deep clone without structuredClone — older iOS WebViews Capacitor may run on

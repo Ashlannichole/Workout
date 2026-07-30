@@ -36,6 +36,21 @@ export const IconHistory = (p) => (
   </svg>
 )
 
+export const IconCalendar = (p) => (
+  <svg {...base} {...p}>
+    <rect x="3" y="4" width="18" height="17" rx="2.5" />
+    <path d="M3 9h18M8 2v4M16 2v4" />
+    <path d="M7.5 13h2M11 13h2M14.5 13h2M7.5 16.5h2M11 16.5h2" />
+  </svg>
+)
+
+export const IconGear = (p) => (
+  <svg {...base} {...p}>
+    <circle cx="12" cy="12" r="3.2" />
+    <path d="M12 3.5v2.4M12 18.1v2.4M4.9 12H2.5M21.5 12h-2.4M6.3 6.3l1.7 1.7M16 16l1.7 1.7M17.7 6.3 16 8M8 16l-1.7 1.7" />
+  </svg>
+)
+
 export const IconBack = (p) => (
   <svg {...base} {...p}>
     <path d="M15 5l-7 7 7 7" />

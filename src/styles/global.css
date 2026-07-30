@@ -549,6 +549,55 @@ ol {
   flex-shrink: 0;
 }
 
+/* ============================ plan finished banner ============================ */
+.plan-banner {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--tabbar-h) + var(--safe-bottom) + var(--s3));
+  width: min(100% - 32px, calc(var(--shell-max) - 32px));
+  z-index: 40;
+  background: var(--plate-blue);
+  color: #fff;
+  border-radius: var(--r-lg);
+  padding: var(--s3) var(--s4);
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  box-shadow: var(--shadow-lift);
+  animation: rise 0.22s var(--ease);
+}
+.plan-banner__body {
+  flex: 1;
+  min-width: 0;
+}
+.plan-banner__label {
+  font-family: var(--font-data);
+  font-size: var(--t-2xs);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.8;
+  margin-bottom: 2px;
+}
+.plan-banner__name {
+  font-weight: 700;
+  font-size: var(--t-md);
+}
+.plan-banner__btn {
+  font-family: var(--font-data);
+  font-size: var(--t-2xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: var(--r-pill);
+  padding: 8px 12px;
+  flex-shrink: 0;
+}
+.plan-banner__btn--primary {
+  background: rgba(255, 255, 255, 0.16);
+}
+
 /* ============================ tab bar ============================ */
 .tabbar {
   position: fixed;
@@ -692,6 +741,30 @@ ol {
 }
 .week-pill[data-pr='true'] {
   border-color: var(--plate-yellow);
+}
+.week-pill[data-status] {
+  position: relative;
+}
+.week-pill[data-status]::after {
+  content: '';
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.week-pill[data-status='scheduled']::after {
+  background: var(--plate-blue);
+}
+.week-pill[data-status='logged']::after {
+  background: var(--plate-green);
+}
+.week-pill[data-status='rest']::after {
+  background: var(--line-strong);
+}
+.week-pill[aria-pressed='true'][data-status]::after {
+  background: #fff;
 }
 
 @media (prefers-reduced-motion: reduce) {

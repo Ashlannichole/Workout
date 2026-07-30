@@ -1,17 +1,38 @@
+import { useEffect } from 'react'
 import { useApp } from '../state/AppContext.jsx'
 import AppBar from '../components/AppBar.jsx'
 import LoadLadder from '../components/LoadLadder.jsx'
+import { IconGear } from '../components/Icons.jsx'
 import { EXERCISE_BY_ID } from '../data/exercises.js'
 import { historyForExercise, isPrWeek } from '../lib/progression.js'
+import { totalSessions } from '../lib/planProgress.js'
+import { dateKey } from '../lib/schedule.js'
 
 export default function Today({ onNavigate }) {
-  const { state, activePlan, getLog } = useApp()
+  const { state, getLog, plans, ensureSchedule, activeWeekForPlan, remainingSessions } = useApp()
   const name = state.profile.name?.trim()
+  const todayKey = dateKey(new Date())
 
-  if (!activePlan) {
+  useEffect(() => {
+    ensureSchedule()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const activePlans = plans.filter((p) => !p.finishedAt)
+
+  const appBar = (
+    <AppBar
+      eyebrow={name ? `Hey ${name}` : 'Welcome'}
+      title="Today"
+      action={<IconGear />}
+      onAction={() => onNavigate('settings')}
+    />
+  )
+
+  if (activePlans.length === 0) {
     return (
       <>
-        <AppBar eyebrow={name ? `Hey ${name}` : 'Welcome'} title="Today" />
+        {appBar}
         <div className="scroll">
           <div className="empty" style={{ marginTop: 'var(--s10)' }}>
             <h2 className="h2" style={{ marginBottom: 'var(--s2)' }}>
@@ -29,13 +50,61 @@ export default function Today({ onNavigate }) {
     )
   }
 
-  const week = activePlan.currentWeek
-  const day = activePlan.days[0]
+  const assignment = state.schedule.assignments[todayKey]
+  const plan = assignment?.planId ? state.plans[assignment.planId] : null
+  const day = plan?.days.find((d) => d.id === assignment.dayId)
+
+  const plansList = (
+    <section className="section">
+      <div className="section__head">
+        <h2 className="h3">Your plans</h2>
+      </div>
+      <ul className="stack">
+        {activePlans.map((p) => {
+          const remaining = remainingSessions(p.id)
+          const total = totalSessions(p)
+          return (
+            <li key={p.id}>
+              <button
+                className="choice"
+                style={{ width: '100%' }}
+                onClick={() => onNavigate('plan', { planId: p.id })}
+              >
+                <span className="choice__t">{p.name}</span>
+                <span className="choice__s">
+                  {p.modality} · {total - remaining}/{total} sessions logged
+                </span>
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+    </section>
+  )
+
+  if (!plan || !day) {
+    return (
+      <>
+        {appBar}
+        <div className="scroll">
+          <div className="empty" style={{ marginTop: 'var(--s5)' }}>
+            <h2 className="h2" style={{ marginBottom: 'var(--s2)' }}>
+              Rest day
+            </h2>
+            <p className="muted">Nothing scheduled today. Want to train anyway? Pick a plan below.</p>
+          </div>
+          {plansList}
+        </div>
+      </>
+    )
+  }
+
+  const week = activeWeekForPlan(plan.id)
   const prWeek = isPrWeek(week)
 
   const doneCount = day.exercises.filter((item) => {
     const log = getLog({
-      planId: activePlan.id,
+      planId: plan.id,
       dayId: day.id,
       exerciseId: item.exerciseId,
       week,
@@ -44,20 +113,23 @@ export default function Today({ onNavigate }) {
   }).length
   const complete = doneCount === day.exercises.length
 
-  // Lead with the exercise carrying the biggest jump this week — that's the
-  // most interesting fact about today.
   const headline = day.exercises
     .map((item) => ({ item, ex: EXERCISE_BY_ID[item.exerciseId] }))
     .find((x) => x.ex?.compound)
 
   return (
     <>
-      <AppBar eyebrow={name ? `Hey ${name}` : 'Today'} title={complete ? 'Session logged' : 'Up next'} />
+      <AppBar
+        eyebrow={name ? `Hey ${name}` : 'Today'}
+        title={complete ? 'Session logged' : 'Up next'}
+        action={<IconGear />}
+        onAction={() => onNavigate('settings')}
+      />
       <div className="scroll">
         <section className="card card--pad" style={{ marginTop: 'var(--s5)' }}>
           <div className="spread" style={{ marginBottom: 'var(--s3)' }}>
             <span className="label">
-              Week {week} / {activePlan.weeks}
+              {plan.name} · Week {week} / {plan.weeks}
             </span>
             {prWeek && <span className="badge badge--pr">PR week</span>}
             {complete && <span className="badge badge--done">Done</span>}
@@ -76,9 +148,9 @@ export default function Today({ onNavigate }) {
               <span className="label">{headline.ex.name}</span>
               <LoadLadder
                 exerciseId={headline.item.exerciseId}
-                weeks={activePlan.weeks}
+                weeks={plan.weeks}
                 currentWeek={week}
-                historyByWeek={historyForExercise(state.logs, activePlan.id, headline.item.exerciseId)}
+                historyByWeek={historyForExercise(state.logs, plan.id, headline.item.exerciseId)}
                 profile={state.profile}
               />
             </div>
@@ -86,7 +158,7 @@ export default function Today({ onNavigate }) {
 
           <button
             className="btn btn--primary btn--block"
-            onClick={() => onNavigate('session', { planId: activePlan.id, dayId: day.id })}
+            onClick={() => onNavigate('session', { planId: plan.id, dayId: day.id })}
           >
             {complete ? 'Review the session' : doneCount > 0 ? 'Keep going' : 'Start the session'}
           </button>
@@ -118,6 +190,8 @@ export default function Today({ onNavigate }) {
             })}
           </ul>
         </section>
+
+        {activePlans.length > 1 && plansList}
       </div>
     </>
   )

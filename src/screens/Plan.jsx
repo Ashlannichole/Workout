@@ -1,12 +1,26 @@
+import { useEffect, useState } from 'react'
 import { useApp } from '../state/AppContext.jsx'
 import AppBar from '../components/AppBar.jsx'
+import Choice from '../components/Choice.jsx'
 import LoadLadder from '../components/LoadLadder.jsx'
 import { EXERCISE_BY_ID } from '../data/exercises.js'
 import { historyForExercise, isPrWeek, suggestWeight } from '../lib/progression.js'
 
 export default function Plan({ planId, onNavigate }) {
-  const { state, plans, activePlan, dispatch, setWeek } = useApp()
+  const { state, plans, activePlan, dispatch, setWeek, activeWeekForPlan, remainingSessions } =
+    useApp()
   const plan = (planId && state.plans[planId]) || activePlan
+  const [dayIdx, setDayIdx] = useState(0)
+
+  // The week actually being trained, derived from logged completion. This
+  // only ever nudges plan.currentWeek forward when real progress overtakes
+  // it — plan.currentWeek itself stays the *viewing* week the strip below
+  // highlights, so browsing past/future weeks never changes what week a
+  // new logged set attributes to (Session.jsx derives that independently).
+  const activeWeek = plan ? activeWeekForPlan(plan.id) : 1
+  useEffect(() => {
+    if (plan && activeWeek > plan.currentWeek) setWeek(plan.id, activeWeek)
+  }, [plan?.id, activeWeek])
 
   if (!plan) {
     return (
@@ -27,8 +41,9 @@ export default function Plan({ planId, onNavigate }) {
     )
   }
 
-  const day = plan.days[0]
+  const day = plan.days[Math.min(dayIdx, plan.days.length - 1)]
   const week = plan.currentWeek
+  const complete = remainingSessions(plan.id) <= 0
 
   return (
     <>
@@ -39,7 +54,23 @@ export default function Plan({ planId, onNavigate }) {
         onAction={() => onNavigate('build')}
       />
       <div className="scroll">
-        <section className="section" style={{ marginTop: 'var(--s5)' }}>
+        {plan.days.length > 1 && (
+          <section className="section" style={{ marginTop: 'var(--s5)' }}>
+            <span className="label">Session</span>
+            <div className="choices choices--3" style={{ marginTop: 'var(--s2)' }}>
+              {plan.days.map((d, i) => (
+                <Choice
+                  key={d.id}
+                  title={d.name}
+                  selected={i === dayIdx}
+                  onClick={() => setDayIdx(i)}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section className="section" style={plan.days.length > 1 ? undefined : { marginTop: 'var(--s5)' }}>
           <span className="label">Week</span>
           <div className="week-strip" style={{ marginTop: 'var(--s2)' }}>
             {Array.from({ length: plan.weeks }, (_, i) => i + 1).map((w) => (
@@ -60,12 +91,26 @@ export default function Plan({ planId, onNavigate }) {
               </button>
             ))}
           </div>
-          <button
-            className="btn btn--primary btn--block"
-            onClick={() => onNavigate('session', { planId: plan.id, dayId: day.id })}
-          >
-            Log week {week}
-          </button>
+          {complete ? (
+            <div className="empty">
+              <span className="badge badge--done" style={{ marginBottom: 'var(--s2)' }}>
+                Complete
+              </span>
+              <p className="muted" style={{ marginBottom: 'var(--s4)' }}>
+                Every workout in this plan is logged. Nice work — build a new one to keep going.
+              </p>
+              <button className="btn btn--primary btn--block" onClick={() => onNavigate('build')}>
+                Build a new plan
+              </button>
+            </div>
+          ) : (
+            <button
+              className="btn btn--primary btn--block"
+              onClick={() => onNavigate('session', { planId: plan.id, dayId: day.id })}
+            >
+              Log week {activeWeek}
+            </button>
+          )}
         </section>
 
         <section className="section">
