@@ -2,22 +2,42 @@ import { useEffect, useState } from 'react'
 import { useApp } from '../state/AppContext.jsx'
 import AppBar from '../components/AppBar.jsx'
 import Choice from '../components/Choice.jsx'
+import ExerciseSwap from '../components/ExerciseSwap.jsx'
+import { EXERCISE_BY_ID } from '../data/exercises.js'
 import { dateKey, addDays } from '../lib/schedule.js'
 import { isSlotComplete } from '../lib/planProgress.js'
 
 const WEEKDAY_FMT = { weekday: 'short' }
 
-function statusFor(assignment, plans, logs) {
+/**
+ * `week` must be the plan's live active week (activeWeekForPlan), not the
+ * assignment's own stored `week` — that field is just the fill algorithm's
+ * internal day-template rotation counter, and can drift from the real
+ * logged-progress week. Using anything else here would let this status (and
+ * the override key built from it) disagree with what Session.jsx actually
+ * logs against when the session is opened.
+ */
+function statusFor(assignment, plans, logs, activeWeekForPlan) {
   if (!assignment) return 'unscheduled'
   if (assignment.rest) return 'rest'
   const plan = plans[assignment.planId]
   const day = plan?.days.find((d) => d.id === assignment.dayId)
-  if (plan && day && isSlotComplete(logs, plan.id, day, assignment.week)) return 'logged'
+  if (plan && day && isSlotComplete(logs, plan.id, day, activeWeekForPlan(plan.id))) return 'logged'
   return 'scheduled'
 }
 
 export default function Calendar({ onNavigate }) {
-  const { state, plans, ensureSchedule, assignDay } = useApp()
+  const {
+    state,
+    plans,
+    ensureSchedule,
+    assignDay,
+    activeWeekForPlan,
+    exercisesForInstance,
+    substituteExerciseInstance,
+    revertExerciseInstance,
+    substituteCandidates,
+  } = useApp()
   const today = new Date()
   const todayKey = dateKey(today)
   const [selectedKey, setSelectedKey] = useState(todayKey)
@@ -35,7 +55,7 @@ export default function Calendar({ onNavigate }) {
       date: d,
       weekday: d.toLocaleDateString(undefined, WEEKDAY_FMT),
       dayNum: d.getDate(),
-      status: statusFor(state.schedule.assignments[key], state.plans, state.logs),
+      status: statusFor(state.schedule.assignments[key], state.plans, state.logs, activeWeekForPlan),
     }
   })
 
@@ -44,6 +64,12 @@ export default function Calendar({ onNavigate }) {
   const plan = assignment?.planId ? state.plans[assignment.planId] : null
   const day = plan?.days.find((d) => d.id === assignment.dayId)
   const isPast = selectedKey < todayKey
+
+  // Always the plan's live active week — see statusFor's comment. The strip
+  // only ever shows today and the next 6 days, so there's no past-date view
+  // to preserve a stale week number for.
+  const week = plan ? activeWeekForPlan(plan.id) : null
+  const exercises = plan && day ? exercisesForInstance(plan, day, week) : []
 
   const options = activePlans.flatMap((p) =>
     p.days.map((d) => ({ planId: p.id, dayId: d.id, planName: p.name, dayName: d.name })),
@@ -90,7 +116,7 @@ export default function Calendar({ onNavigate }) {
             <div className="card card--pad">
               <div className="spread" style={{ marginBottom: 'var(--s2)' }}>
                 <span className="label">{plan.name}</span>
-                {statusFor(assignment, state.plans, state.logs) === 'logged' && (
+                {statusFor(assignment, state.plans, state.logs, activeWeekForPlan) === 'logged' && (
                   <span className="badge badge--done">Logged</span>
                 )}
               </div>
@@ -98,7 +124,7 @@ export default function Calendar({ onNavigate }) {
                 {day.name}
               </h2>
               <p className="muted" style={{ marginBottom: 'var(--s4)' }}>
-                {day.exercises.length} lifts · {day.durationMin} minutes
+                {exercises.length} lifts · {day.durationMin} minutes
               </p>
               <button
                 className="btn btn--primary btn--block"
@@ -106,6 +132,43 @@ export default function Calendar({ onNavigate }) {
               >
                 {isPast ? 'Log it late' : 'Start this session'}
               </button>
+
+              <ul className="stack" style={{ marginTop: 'var(--s4)' }}>
+                {exercises.map((item) => {
+                  const ex = EXERCISE_BY_ID[item.exerciseId]
+                  const originalId = item.originalExerciseId ?? item.exerciseId
+                  const otherIds = exercises
+                    .filter((x) => x.exerciseId !== item.exerciseId)
+                    .map((x) => x.exerciseId)
+                  return (
+                    <li key={originalId} className="exrow">
+                      <div className="exrow__top">
+                        <div>
+                          <div className="exrow__name">{ex.name}</div>
+                          <div className="exrow__meta">{ex.primary.join(' · ')}</div>
+                        </div>
+                        <div className="exrow__load">
+                          <div className="exrow__weight">
+                            {item.sets}×{item.reps}
+                          </div>
+                        </div>
+                      </div>
+                      <ExerciseSwap
+                        candidates={substituteCandidates(originalId, plan, otherIds)}
+                        activeOverride={Boolean(item.originalExerciseId)}
+                        onPick={(newId) =>
+                          substituteExerciseInstance(plan.id, day.id, week, originalId, newId)
+                        }
+                        onRevert={
+                          item.originalExerciseId
+                            ? () => revertExerciseInstance(plan.id, day.id, week, originalId)
+                            : undefined
+                        }
+                      />
+                    </li>
+                  )
+                })}
+              </ul>
             </div>
           ) : (
             <div className="empty">

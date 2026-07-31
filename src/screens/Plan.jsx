@@ -3,12 +3,22 @@ import { useApp } from '../state/AppContext.jsx'
 import AppBar from '../components/AppBar.jsx'
 import Choice from '../components/Choice.jsx'
 import LoadLadder from '../components/LoadLadder.jsx'
+import ExerciseSwap from '../components/ExerciseSwap.jsx'
 import { EXERCISE_BY_ID } from '../data/exercises.js'
 import { historyForExercise, isPrWeek, suggestWeight } from '../lib/progression.js'
 
 export default function Plan({ planId, onNavigate }) {
-  const { state, plans, activePlan, dispatch, setWeek, activeWeekForPlan, remainingSessions } =
-    useApp()
+  const {
+    state,
+    plans,
+    activePlan,
+    dispatch,
+    setWeek,
+    activeWeekForPlan,
+    remainingSessions,
+    substituteExercisePermanent,
+    substituteCandidates,
+  } = useApp()
   const plan = (planId && state.plans[planId]) || activePlan
   const [dayIdx, setDayIdx] = useState(0)
 
@@ -118,6 +128,9 @@ export default function Plan({ planId, onNavigate }) {
             <h2 className="h3">Load ladder</h2>
             <span className="label">Each lift, week by week</span>
           </div>
+          <p className="muted" style={{ fontSize: 'var(--t-2xs)', marginBottom: 'var(--s3)' }}>
+            Swapping here changes future weeks — past history stays under the old exercise.
+          </p>
 
           <ul className="stack">
             {day.exercises.map((item) => {
@@ -129,6 +142,9 @@ export default function Plan({ planId, onNavigate }) {
                 historyByWeek: history,
                 profile: state.profile,
               })
+              const otherIds = day.exercises
+                .filter((x) => x.exerciseId !== item.exerciseId)
+                .map((x) => x.exerciseId)
               return (
                 <li key={item.exerciseId} className="exrow">
                   <div className="exrow__top">
@@ -150,6 +166,12 @@ export default function Plan({ planId, onNavigate }) {
                     currentWeek={week}
                     historyByWeek={history}
                     profile={state.profile}
+                  />
+                  <ExerciseSwap
+                    candidates={substituteCandidates(item.exerciseId, plan, otherIds)}
+                    onPick={(newId) =>
+                      substituteExercisePermanent(plan.id, day.id, item.exerciseId, newId)
+                    }
                   />
                 </li>
               )

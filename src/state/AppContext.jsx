@@ -4,6 +4,7 @@ import { generateSession } from '../lib/generator.js'
 import { historyForExercise, suggestWeight } from '../lib/progression.js'
 import { activeWeekForPlan as computeActiveWeek, isPlanComplete, remainingSessions as computeRemaining } from '../lib/planProgress.js'
 import { fillSchedule } from '../lib/schedule.js'
+import { findSubstitutes, buildItemFor, overrideKey, effectiveExercises } from '../lib/substitution.js'
 
 const AppCtx = createContext(null)
 
@@ -57,6 +58,46 @@ function reducer(state, action) {
 
     case 'plan/activate':
       return { ...state, activePlanId: action.planId }
+
+    case 'plan/substituteExercise': {
+      const plan = state.plans[action.planId]
+      if (!plan) return state
+      const days = plan.days.map((d) =>
+        d.id !== action.dayId
+          ? d
+          : {
+              ...d,
+              exercises: d.exercises.map((item) =>
+                item.exerciseId === action.originalExerciseId
+                  ? buildItemFor(action.newExerciseId, plan.goal)
+                  : item,
+              ),
+            },
+      )
+      return { ...state, plans: { ...state.plans, [action.planId]: { ...plan, days } } }
+    }
+
+    case 'overrides/set': {
+      const key = overrideKey(action.planId, action.dayId, action.week)
+      const existing = state.overrides[key] ?? {}
+      return {
+        ...state,
+        overrides: {
+          ...state.overrides,
+          [key]: { ...existing, [action.originalExerciseId]: action.newExerciseId },
+        },
+      }
+    }
+
+    case 'overrides/clear': {
+      const key = overrideKey(action.planId, action.dayId, action.week)
+      const existing = { ...(state.overrides[key] ?? {}) }
+      delete existing[action.originalExerciseId]
+      const overrides = { ...state.overrides }
+      if (Object.keys(existing).length) overrides[key] = existing
+      else delete overrides[key]
+      return { ...state, overrides }
+    }
 
     case 'schedule/update': {
       const schedule = { ...state.schedule }
@@ -219,6 +260,33 @@ export function AppProvider({ children }) {
       dispatch({ type: 'plan/update', planId, patch: { notifiedAt: new Date().toISOString() } })
     }
 
+    /** Permanent: edits the day-template itself, affects every future week. */
+    function substituteExercisePermanent(planId, dayId, originalExerciseId, newExerciseId) {
+      dispatch({ type: 'plan/substituteExercise', planId, dayId, originalExerciseId, newExerciseId })
+    }
+
+    /** One-time: only this exact (plan, day-template, week) instance. */
+    function substituteExerciseInstance(planId, dayId, week, originalExerciseId, newExerciseId) {
+      dispatch({ type: 'overrides/set', planId, dayId, week, originalExerciseId, newExerciseId })
+    }
+
+    function revertExerciseInstance(planId, dayId, week, originalExerciseId) {
+      dispatch({ type: 'overrides/clear', planId, dayId, week, originalExerciseId })
+    }
+
+    function exercisesForInstance(plan, day, week) {
+      return effectiveExercises(day, state.overrides, plan.id, week, plan.goal)
+    }
+
+    function substituteCandidates(originalExerciseId, plan, excludeExerciseIds = []) {
+      return findSubstitutes({
+        originalExerciseId,
+        equipment: plan.equipment,
+        activityLevel: state.profile.activityLevel,
+        excludeExerciseIds,
+      })
+    }
+
     return {
       state,
       dispatch,
@@ -236,6 +304,11 @@ export function AppProvider({ children }) {
       setAvailability,
       assignDay,
       notifyPlanFinished,
+      substituteExercisePermanent,
+      substituteExerciseInstance,
+      revertExerciseInstance,
+      exercisesForInstance,
+      substituteCandidates,
       resetAll: () => {
         clearAll()
         dispatch({ type: 'state/reset' })

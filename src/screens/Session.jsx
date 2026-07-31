@@ -14,7 +14,8 @@ import { isLoaded, isPrWeek, roundLoad } from '../lib/progression.js'
  * you deliberately tap the number.
  */
 export default function Session({ planId, dayId, onNavigate }) {
-  const { state, getLog, setLog, prescriptionFor, activeWeekForPlan } = useApp()
+  const { state, getLog, setLog, prescriptionFor, activeWeekForPlan, exercisesForInstance } =
+    useApp()
   const plan = state.plans[planId]
   const day = plan?.days.find((d) => d.id === dayId) ?? plan?.days[0]
   const [rest, setRest] = useState(null) // { seconds, key }
@@ -23,6 +24,12 @@ export default function Session({ planId, dayId, onNavigate }) {
   // screen's strip happens to be showing — a logged set always attributes
   // to the plan's true active week.
   const week = plan ? activeWeekForPlan(planId) : 1
+
+  // A one-time swap made on Today/Calendar for this exact instance must
+  // actually apply here — this is where sets get logged, so the swap would
+  // be purely cosmetic elsewhere if this screen kept using the template's
+  // original exercise.
+  const exercises = plan && day ? exercisesForInstance(plan, day, week) : []
 
   const startRest = useCallback((seconds) => {
     setRest({ seconds, key: Date.now() })
@@ -41,7 +48,7 @@ export default function Session({ planId, dayId, onNavigate }) {
     )
   }
 
-  const doneCount = day.exercises.filter((item) => {
+  const doneCount = exercises.filter((item) => {
     const log = getLog({ planId, dayId: day.id, exerciseId: item.exerciseId, week })
     return log?.sets?.every((s) => s.done)
   }).length
@@ -57,13 +64,13 @@ export default function Session({ planId, dayId, onNavigate }) {
       <div className="scroll">
         <div className="spread" style={{ margin: 'var(--s5) 0 var(--s3)' }}>
           <span className="label">
-            {doneCount} of {day.exercises.length} complete
+            {doneCount} of {exercises.length} complete
           </span>
           <span className="label data">{day.durationMin} min</span>
         </div>
 
         <ul className="stack">
-          {day.exercises.map((item) => (
+          {exercises.map((item) => (
             <ExerciseCard
               key={item.exerciseId}
               item={item}

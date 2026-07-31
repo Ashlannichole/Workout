@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useApp } from '../state/AppContext.jsx'
 import AppBar from '../components/AppBar.jsx'
 import LoadLadder from '../components/LoadLadder.jsx'
+import ExerciseSwap from '../components/ExerciseSwap.jsx'
 import { IconGear } from '../components/Icons.jsx'
 import { EXERCISE_BY_ID } from '../data/exercises.js'
 import { historyForExercise, isPrWeek } from '../lib/progression.js'
@@ -9,7 +10,18 @@ import { totalSessions } from '../lib/planProgress.js'
 import { dateKey } from '../lib/schedule.js'
 
 export default function Today({ onNavigate }) {
-  const { state, getLog, plans, ensureSchedule, activeWeekForPlan, remainingSessions } = useApp()
+  const {
+    state,
+    getLog,
+    plans,
+    ensureSchedule,
+    activeWeekForPlan,
+    remainingSessions,
+    exercisesForInstance,
+    substituteExerciseInstance,
+    revertExerciseInstance,
+    substituteCandidates,
+  } = useApp()
   const name = state.profile.name?.trim()
   const todayKey = dateKey(new Date())
 
@@ -101,8 +113,9 @@ export default function Today({ onNavigate }) {
 
   const week = activeWeekForPlan(plan.id)
   const prWeek = isPrWeek(week)
+  const exercises = exercisesForInstance(plan, day, week)
 
-  const doneCount = day.exercises.filter((item) => {
+  const doneCount = exercises.filter((item) => {
     const log = getLog({
       planId: plan.id,
       dayId: day.id,
@@ -111,9 +124,9 @@ export default function Today({ onNavigate }) {
     })
     return log?.sets?.every((s) => s.done)
   }).length
-  const complete = doneCount === day.exercises.length
+  const complete = doneCount === exercises.length
 
-  const headline = day.exercises
+  const headline = exercises
     .map((item) => ({ item, ex: EXERCISE_BY_ID[item.exerciseId] }))
     .find((x) => x.ex?.compound)
 
@@ -139,7 +152,7 @@ export default function Today({ onNavigate }) {
             {day.name}
           </h2>
           <p className="muted" style={{ marginBottom: 'var(--s4)' }}>
-            {day.exercises.length} lifts · {day.durationMin} minutes ·{' '}
+            {exercises.length} lifts · {day.durationMin} minutes ·{' '}
             {doneCount > 0 && !complete ? `${doneCount} already logged` : 'not started'}
           </p>
 
@@ -170,10 +183,14 @@ export default function Today({ onNavigate }) {
             <span className="label data">{day.durationMin} MIN</span>
           </div>
           <ul className="stack">
-            {day.exercises.map((item) => {
+            {exercises.map((item) => {
               const ex = EXERCISE_BY_ID[item.exerciseId]
+              const originalId = item.originalExerciseId ?? item.exerciseId
+              const otherIds = exercises
+                .filter((x) => x.exerciseId !== item.exerciseId)
+                .map((x) => x.exerciseId)
               return (
-                <li key={item.exerciseId} className="exrow">
+                <li key={originalId} className="exrow">
                   <div className="exrow__top">
                     <div>
                       <div className="exrow__name">{ex.name}</div>
@@ -185,6 +202,16 @@ export default function Today({ onNavigate }) {
                       </div>
                     </div>
                   </div>
+                  <ExerciseSwap
+                    candidates={substituteCandidates(originalId, plan, otherIds)}
+                    activeOverride={Boolean(item.originalExerciseId)}
+                    onPick={(newId) => substituteExerciseInstance(plan.id, day.id, week, originalId, newId)}
+                    onRevert={
+                      item.originalExerciseId
+                        ? () => revertExerciseInstance(plan.id, day.id, week, originalId)
+                        : undefined
+                    }
+                  />
                 </li>
               )
             })}

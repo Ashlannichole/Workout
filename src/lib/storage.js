@@ -28,6 +28,7 @@ export const emptyState = {
     availableDays: [1, 3, 5], // 0=Sun..6=Sat (Date#getDay())
     assignments: {}, // 'YYYY-MM-DD' -> { planId, dayId, manual? } | { rest: true, manual? }
   },
+  overrides: {}, // `${planId}::${dayId}::w${week}` -> { [originalExerciseId]: newExerciseId }
 }
 
 /* Deep clone without structuredClone — older iOS WebViews Capacitor may run on

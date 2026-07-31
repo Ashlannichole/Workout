@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useApp } from '../state/AppContext.jsx'
 import AppBar from '../components/AppBar.jsx'
 import Choice from '../components/Choice.jsx'
+import ExerciseSwap from '../components/ExerciseSwap.jsx'
 import {
   MUSCLE_GROUPS,
   MODALITIES,
@@ -12,6 +13,7 @@ import {
 } from '../data/exercises.js'
 import { estimateMinutes } from '../lib/generator.js'
 import { uid } from '../lib/storage.js'
+import { findSubstitutes, buildItemFor } from '../lib/substitution.js'
 
 const DURATIONS = [20, 30, 45, 60, 75, 90]
 const FREQUENCIES = [2, 3, 4, 5]
@@ -95,6 +97,20 @@ export default function Build({ onNavigate }) {
         modality,
         seed: Date.now(),
       })
+      return next
+    })
+  }
+
+  function substituteInPreview(previewIdx, originalExerciseId, newExerciseId) {
+    setPreviews((prev) => {
+      const next = [...prev]
+      const p = next[previewIdx]
+      next[previewIdx] = {
+        ...p,
+        exercises: p.exercises.map((item) =>
+          item.exerciseId === originalExerciseId ? buildItemFor(newExerciseId, goal) : item,
+        ),
+      }
       return next
     })
   }
@@ -276,6 +292,9 @@ export default function Build({ onNavigate }) {
                     <ul className="stack">
                       {preview.exercises.map((item) => {
                         const ex = EXERCISE_BY_ID[item.exerciseId]
+                        const otherIds = preview.exercises
+                          .filter((x) => x.exerciseId !== item.exerciseId)
+                          .map((x) => x.exerciseId)
                         return (
                           <li key={item.exerciseId} className="exrow">
                             <div className="exrow__top">
@@ -294,6 +313,15 @@ export default function Build({ onNavigate }) {
                                 </div>
                               </div>
                             </div>
+                            <ExerciseSwap
+                              candidates={findSubstitutes({
+                                originalExerciseId: item.exerciseId,
+                                equipment,
+                                activityLevel: profile.activityLevel,
+                                excludeExerciseIds: otherIds,
+                              })}
+                              onPick={(newId) => substituteInPreview(i, item.exerciseId, newId)}
+                            />
                           </li>
                         )
                       })}
