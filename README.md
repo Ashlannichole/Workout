@@ -184,5 +184,4 @@ Worth adding at that point: `@capacitor/haptics` on set completion, and
 - Reps logged per set aren't fed back into the weight suggestion. The honest version of
   progressive overload raises load when you hit the top of the rep range; right now the
   cadence approximates that.
-- No exercise swap-out inside a session.
 - Weights are lb only. `profile.units` exists but nothing reads it yet.
