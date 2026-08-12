@@ -5,6 +5,7 @@ import { historyForExercise, suggestWeight } from '../lib/progression.js'
 import { activeWeekForPlan as computeActiveWeek, isPlanComplete, remainingSessions as computeRemaining } from '../lib/planProgress.js'
 import { fillSchedule } from '../lib/schedule.js'
 import { findSubstitutes, buildItemFor, overrideKey, effectiveExercises } from '../lib/substitution.js'
+import { birthdaysElapsed } from '../lib/age.js'
 
 const AppCtx = createContext(null)
 
@@ -14,7 +15,11 @@ function reducer(state, action) {
       return { ...state, profile: { ...state.profile, ...action.patch } }
 
     case 'onboard/finish':
-      return { ...state, onboarded: true, profile: { ...state.profile, ...action.profile } }
+      return {
+        ...state,
+        onboarded: true,
+        profile: { ...state.profile, ...action.profile, ageUpdatedAt: new Date().toISOString() },
+      }
 
     case 'plan/create': {
       const plan = action.plan
@@ -162,6 +167,22 @@ export function AppProvider({ children }) {
       }
     }
   }, [state.plans, state.logs])
+
+  // Age is a static number the user typed once; if they gave us a birth
+  // month/day (never a year), advance it by however many birthdays have
+  // passed since we last confirmed it. Mount-only check — ageUpdatedAt
+  // itself is the persisted baseline, so this stays correct across sessions
+  // no matter how long the app goes unopened.
+  useEffect(() => {
+    const { birthMonth, birthDay, ageUpdatedAt, age } = state.profile
+    const elapsed = birthdaysElapsed(ageUpdatedAt, birthMonth, birthDay)
+    if (elapsed > 0) {
+      dispatch({
+        type: 'profile/set',
+        patch: { age: Number(age) + elapsed, ageUpdatedAt: new Date().toISOString() },
+      })
+    }
+  }, [])
 
   const api = useMemo(() => {
     const plans = Object.values(state.plans).sort(

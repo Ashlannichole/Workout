@@ -10,7 +10,7 @@
  */
 
 import { EXERCISES, EXERCISE_BY_ID, ACTIVITY_LEVELS, setsRepsFor } from '../data/exercises.js'
-import { resolveForEquipment, movementFamily } from './generator.js'
+import { resolveForAnyEquipment, movementFamily } from './generator.js'
 
 const MAX_CANDIDATES = 6
 
@@ -25,12 +25,13 @@ export function findSubstitutes({ originalExerciseId, equipment, activityLevel, 
   const ceiling = maxDifficultyFor(activityLevel)
   const originalFamily = movementFamily(original)
   const exclude = new Set([originalExerciseId, ...excludeExerciseIds])
+  const tiers = Array.isArray(equipment) ? equipment : [equipment]
 
   const candidates = []
   for (const ex of EXERCISES) {
     if (ex.modality !== original.modality) continue
     if (ex.difficulty > ceiling) continue
-    const usable = resolveForEquipment(ex, equipment)
+    const usable = resolveForAnyEquipment(ex, tiers)
     if (!usable || usable.difficulty > ceiling) continue
     if (exclude.has(usable.id)) continue
     if (movementFamily(usable) === originalFamily) continue

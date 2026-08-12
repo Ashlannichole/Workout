@@ -1,6 +1,12 @@
 /* Sanity checks for the pure logic. Run: node scripts/smoke.mjs */
 import { EXERCISES, EXERCISE_BY_ID, MODALITIES, EQUIPMENT, GOALS } from '../src/data/exercises.js'
-import { generateSession, estimateMinutes, resolveForEquipment, movementFamily } from '../src/lib/generator.js'
+import {
+  generateSession,
+  estimateMinutes,
+  resolveForEquipment,
+  resolveForAnyEquipment,
+  movementFamily,
+} from '../src/lib/generator.js'
 import { suggestWeight, suggestStartingWeight, isPrWeek, ladderData, minLoadFor } from '../src/lib/progression.js'
 
 let fails = 0
@@ -75,6 +81,37 @@ for (const eq of EQUIPMENT) {
   }
 }
 console.log(`  ${combos} combinations, ${empties} produced an empty session`)
+
+console.log('--- multi-tier equipment (gym + home + bodyweight together) ---')
+const allTiers = ['gym', 'home', 'bodyweight']
+let multiEmpties = 0
+for (const m of MODALITIES) {
+  for (const g of GOALS) {
+    const r = generateSession({
+      equipment: allTiers,
+      modality: m.id,
+      goal: g.id,
+      muscleGroups: ['chest', 'back', 'core'],
+      durationMin: 45,
+      activityLevel: 'regular',
+      seed: 42,
+    })
+    for (const item of r.exercises) {
+      const ex = EXERCISE_BY_ID[item.exerciseId]
+      ok(
+        allTiers.some((t) => ex.equipment.includes(t)),
+        `${ex.id} not available at any of ${allTiers.join('/')}`,
+      )
+    }
+    if (r.exercises.length === 0) multiEmpties++
+  }
+}
+ok(multiEmpties === 0, `${multiEmpties} multi-tier combination(s) produced an empty session`)
+for (const e of EXERCISES) {
+  const r = resolveForAnyEquipment(e, allTiers)
+  ok(r, `${e.id} does not resolve under any of ${allTiers.join('/')}`)
+}
+console.log(`  ${MODALITIES.length * GOALS.length} multi-tier combinations, ${multiEmpties} empty`)
 
 console.log('--- 20 min vs 90 min ---')
 const short = generateSession({ durationMin: 20, muscleGroups: ['chest'], seed: 7 })

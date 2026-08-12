@@ -60,6 +60,19 @@ export function resolveForEquipment(exercise, equipment, seen = new Set()) {
   return alt ? resolveForEquipment(alt, equipment, seen) : null
 }
 
+/**
+ * Same, but usable if the exercise resolves under ANY of the user's
+ * equipment tiers — someone with both a gym and a home setup should see
+ * exercises from either, not just whichever tier happened to match first.
+ */
+export function resolveForAnyEquipment(exercise, tiers) {
+  for (const tier of tiers) {
+    const usable = resolveForEquipment(exercise, tier)
+    if (usable) return usable
+  }
+  return null
+}
+
 /** Warm-up and cool-down are real minutes. Reserve them off the top. */
 function reservedSeconds(durationMin) {
   if (durationMin <= 20) return 120
@@ -96,11 +109,12 @@ function exerciseCap(durationMin) {
 
 function candidatesFor({ equipment, modality, activityLevel }) {
   const ceiling = maxDifficultyFor(activityLevel)
+  const tiers = Array.isArray(equipment) ? equipment : [equipment]
   const out = []
   for (const ex of EXERCISES) {
     if (ex.modality !== modality) continue
     if (ex.difficulty > ceiling) continue
-    const usable = resolveForEquipment(ex, equipment)
+    const usable = resolveForAnyEquipment(ex, tiers)
     if (!usable) continue
     if (usable.difficulty > ceiling) continue
     if (!out.some((e) => e.id === usable.id)) out.push(usable)

@@ -48,7 +48,13 @@ export default function Build({ onNavigate }) {
   const { state, buildDay, createPlan } = useApp()
   const { profile } = state
 
-  const [equipment, setEquipment] = useState(profile.equipment || 'gym')
+  const [equipment, setEquipment] = useState(() =>
+    Array.isArray(profile.equipment)
+      ? profile.equipment
+      : profile.equipment
+        ? [profile.equipment]
+        : ['gym'],
+  )
   const [goal, setGoal] = useState(profile.goal || 'general')
   const [modality, setModality] = useState('weightlifting')
   const [groups, setGroups] = useState(['chest', 'back'])
@@ -67,6 +73,8 @@ export default function Build({ onNavigate }) {
 
   const toggleGroup = (id) =>
     setGroups((g) => (g.includes(id) ? g.filter((x) => x !== id) : [...g, id]))
+  const toggleEquipment = (id) =>
+    setEquipment((eq) => (eq.includes(id) ? eq.filter((x) => x !== id) : [...eq, id]))
 
   function generate(nextBaseSeed = Date.now()) {
     setBaseSeed(nextBaseSeed)
@@ -153,8 +161,8 @@ export default function Build({ onNavigate }) {
               <Choice
                 key={e.id}
                 title={e.name}
-                selected={equipment === e.id}
-                onClick={() => setEquipment(e.id)}
+                selected={equipment.includes(e.id)}
+                onClick={() => toggleEquipment(e.id)}
               />
             ))}
           </div>

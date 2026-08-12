@@ -6,6 +6,11 @@ import { WEEKDAYS } from '../lib/schedule.js'
 
 const STEPS = 5
 
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+].map((name, i) => ({ value: i + 1, name }))
+
 export default function Onboarding() {
   const { dispatch } = useApp()
   const [step, setStep] = useState(0)
@@ -15,21 +20,30 @@ export default function Onboarding() {
     gender: '',
     weightLb: '',
     activityLevel: '',
-    equipment: '',
+    equipment: [],
     goal: '',
     units: 'lb',
+    birthMonth: '',
+    birthDay: '',
   })
   const [availableDays, setAvailableDays] = useState([])
 
   const set = (patch) => setP((prev) => ({ ...prev, ...patch }))
   const toggleDay = (id) =>
     setAvailableDays((days) => (days.includes(id) ? days.filter((d) => d !== id) : [...days, id].sort()))
+  const toggleEquipment = (id) =>
+    setP((prev) => ({
+      ...prev,
+      equipment: prev.equipment.includes(id)
+        ? prev.equipment.filter((e) => e !== id)
+        : [...prev.equipment, id],
+    }))
 
   const canAdvance =
     [
       Boolean(p.name.trim()),
       Boolean(p.age && p.weightLb && p.gender),
-      Boolean(p.activityLevel && p.equipment),
+      Boolean(p.activityLevel && p.equipment.length > 0),
       Boolean(p.goal),
       availableDays.length > 0,
     ][step] ?? false
@@ -137,6 +151,39 @@ export default function Onboarding() {
                 />
               ))}
             </div>
+
+            <span className="field__label" style={{ marginTop: 'var(--s5)', display: 'block' }}>
+              Birthday (optional)
+            </span>
+            <p className="muted" style={{ fontSize: 'var(--t-2xs)', margin: 'var(--s1) 0 var(--s2)' }}>
+              Month and day only — no year. Lets Rung nudge your age forward as birthdays pass.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s3)' }}>
+              <select
+                className="input"
+                value={p.birthMonth}
+                onChange={(e) => set({ birthMonth: e.target.value ? Number(e.target.value) : '' })}
+              >
+                <option value="">Month</option>
+                {MONTHS.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="input"
+                value={p.birthDay}
+                onChange={(e) => set({ birthDay: e.target.value ? Number(e.target.value) : '' })}
+              >
+                <option value="">Day</option>
+                {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </div>
           </>
         )}
 
@@ -160,14 +207,17 @@ export default function Onboarding() {
             </div>
 
             <span className="field__label">You have access to</span>
+            <p className="muted" style={{ fontSize: 'var(--t-2xs)', margin: 'var(--s1) 0 var(--s2)' }}>
+              Pick everything that applies — Rung will draw from all of it.
+            </p>
             <div className="choices" style={{ marginTop: 'var(--s2)' }}>
               {EQUIPMENT.map((e) => (
                 <Choice
                   key={e.id}
                   title={e.name}
                   sub={e.sub}
-                  selected={p.equipment === e.id}
-                  onClick={() => set({ equipment: e.id })}
+                  selected={p.equipment.includes(e.id)}
+                  onClick={() => toggleEquipment(e.id)}
                 />
               ))}
             </div>

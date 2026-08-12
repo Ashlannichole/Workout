@@ -20,6 +20,9 @@ export const emptyState = {
     equipment: '',
     goal: '',
     units: 'lb',
+    birthMonth: '',
+    birthDay: '',
+    ageUpdatedAt: '',
   },
   plans: {}, // planId -> plan
   activePlanId: null,
