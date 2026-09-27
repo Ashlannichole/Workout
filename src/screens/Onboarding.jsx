@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useApp } from '../state/AppContext.jsx'
 import Choice from '../components/Choice.jsx'
+import AccountPanel from '../components/AccountPanel.jsx'
 import { EQUIPMENT, GOALS, ACTIVITY_LEVELS } from '../data/exercises.js'
 import { WEEKDAYS } from '../lib/schedule.js'
 
@@ -12,7 +13,8 @@ const MONTHS = [
 ].map((name, i) => ({ value: i + 1, name }))
 
 export default function Onboarding() {
-  const { dispatch } = useApp()
+  const { dispatch, cloud } = useApp()
+  const [signingIn, setSigningIn] = useState(false)
   const [step, setStep] = useState(0)
   const [p, setP] = useState({
     name: '',
@@ -99,6 +101,17 @@ export default function Onboarding() {
                 autoFocus
               />
             </label>
+            {cloud.available && (
+              <div style={{ marginTop: 'var(--s6)' }}>
+                {signingIn ? (
+                  <AccountPanel compact />
+                ) : (
+                  <button className="btn btn--ghost btn--block" onClick={() => setSigningIn(true)}>
+                    Already use Rung on another device? Sign in
+                  </button>
+                )}
+              </div>
+            )}
           </>
         )}
 

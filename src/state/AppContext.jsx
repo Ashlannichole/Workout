@@ -6,6 +6,7 @@ import { activeWeekForPlan as computeActiveWeek, isPlanComplete, remainingSessio
 import { fillSchedule } from '../lib/schedule.js'
 import { findSubstitutes, buildItemFor, overrideKey, effectiveExercises } from '../lib/substitution.js'
 import { birthdaysElapsed } from '../lib/age.js'
+import { useCloud } from './useCloud.js'
 
 const AppCtx = createContext(null)
 
@@ -152,6 +153,7 @@ function reducer(state, action) {
 
 export function AppProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, undefined, load)
+  const cloud = useCloud(state, dispatch)
 
   useEffect(() => {
     save(state)
@@ -311,6 +313,7 @@ export function AppProvider({ children }) {
     return {
       state,
       dispatch,
+      cloud,
       plans,
       activePlan,
       createPlan,
@@ -335,7 +338,7 @@ export function AppProvider({ children }) {
         dispatch({ type: 'state/reset' })
       },
     }
-  }, [state])
+  }, [state, cloud])
 
   return <AppCtx.Provider value={api}>{children}</AppCtx.Provider>
 }

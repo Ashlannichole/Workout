@@ -22,6 +22,7 @@ npm run dev        # http://localhost:5173
 npm run build      # -> dist/
 npm run preview    # serve the production build
 node scripts/smoke.mjs   # exercises the generator + progression logic
+node scripts/sync-check.mjs   # sync, merge and workout sharing
 ```
 
 `scripts/smoke.mjs` has no dependencies. It runs the library through all 180
@@ -96,12 +97,21 @@ lateral raise so you can eyeball whether the numbers look like a real program.
 Everything lives in `localStorage` under one versioned key, behind `load()` / `save()`
 in `src/lib/storage.js`.
 
-**On Supabase:** not worth it yet. v1 has no auth, no sharing, and no second device
-to sync to, and adding it now means writing auth screens before the app does anything
-useful. The seam is already there — swap the two functions in `storage.js` for async
-versions and the components don't change. Revisit when you actually want
-cross-device sync or a social feature, which is also roughly when the App Store
-build makes it real.
+**Accounts and sync (optional).** With `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` set, people can sign
+in with an emailed 6-digit code (no password) from Settings or the first onboarding screen, and Rung syncs across
+their phone and iPad. Without those variables it stays device-only, exactly as before.
+
+- `src/lib/sync.js` + `src/lib/merge.js`: local-first sync to one `workout_state` row per account with a version
+  number; edits from two devices merge (plans, logs, schedule days, swaps, profile) instead of overwriting.
+- `src/lib/publish.js`: shares the next two weeks of scheduled workouts (and whether each is done) with the
+  planner app through `scheduled_workouts`, so the planner plans the rest of the day around them.
+- `src/state/useCloud.js`: sign-in, the background sync loop, sign-out, and in-app account deletion
+  (an App Store requirement).
+- Database setup: `supabase/migrations/0001_workouts_and_accounts.sql` (safe to run more than once). Rung and the
+  planner use the **same** Supabase project so one account works in both; full steps are in the planner repo's
+  `docs/SUPABASE_SETUP.md`.
+
+`node scripts/sync-check.mjs` checks the merge, sync and sharing logic (no dependencies).
 
 ---
 
