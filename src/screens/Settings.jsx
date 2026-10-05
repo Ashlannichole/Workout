@@ -1,10 +1,11 @@
 import { useApp } from '../state/AppContext.jsx'
 import AppBar from '../components/AppBar.jsx'
 import Choice from '../components/Choice.jsx'
+import AccountPanel from '../components/AccountPanel.jsx'
 import { WEEKDAYS, dateKey, fillSchedule } from '../lib/schedule.js'
 
 export default function Settings({ onNavigate }) {
-  const { state, dispatch, resetAll, plans } = useApp()
+  const { state, dispatch, resetAll, plans, cloud } = useApp()
   const availableDays = state.schedule.availableDays
 
   function toggleDay(id) {
@@ -42,6 +43,13 @@ export default function Settings({ onNavigate }) {
       <AppBar eyebrow="Rung" title="Settings" action="Done" onAction={() => onNavigate('today')} />
       <div className="scroll">
         <section className="section" style={{ marginTop: 'var(--s5)' }}>
+          <span className="field__label">Account & devices</span>
+          <div style={{ marginTop: 'var(--s2)' }}>
+            <AccountPanel />
+          </div>
+        </section>
+
+        <section className="section">
           <span className="field__label">Which days do you train?</span>
           <p className="muted" style={{ fontSize: 'var(--t-2xs)', margin: 'var(--s1) 0 var(--s2)' }}>
             Rung schedules your plans across these days automatically — you can still hand-edit any
@@ -75,7 +83,9 @@ export default function Settings({ onNavigate }) {
             Erase all data
           </button>
           <p className="muted" style={{ fontSize: 'var(--t-2xs)', marginTop: 'var(--s2)' }}>
-            Everything is stored on this device only. Nothing is uploaded.
+            {cloud.user
+              ? 'This erases Rung on this device. Your account keeps its copy; delete the account above to remove that too.'
+              : 'Everything is stored on this device only. Nothing is uploaded.'}
           </p>
         </section>
       </div>
