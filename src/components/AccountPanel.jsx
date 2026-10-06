@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { authMessage, MIN_PASSWORD, passwordProblem } from '../lib/authMessages.js'
 import { useApp } from '../state/AppContext.jsx'
 
 const STATUS = {
@@ -9,20 +10,92 @@ const STATUS = {
 }
 
 const small = { fontSize: 'var(--t-2xs)', margin: 'var(--s1) 0 var(--s3)' }
+const errorStyle = { ...small, color: 'var(--plate-red)' }
+
+/** A password field with a show/hide toggle. */
+function PasswordField({ label = 'Password', value, onChange, autoComplete, placeholder }) {
+  const [shown, setShown] = useState(false)
+  return (
+    <label className="field">
+      <span className="field__label" style={{ display: 'flex', justifyContent: 'space-between' }}>
+        {label}
+        <button type="button" className="btn btn--ghost" style={{ padding: 0, minHeight: 0, fontSize: 'var(--t-2xs)' }} onClick={() => setShown((s) => !s)}>
+          {shown ? 'Hide' : 'Show'}
+        </button>
+      </span>
+      <input
+        className="input"
+        type={shown ? 'text' : 'password'}
+        autoComplete={autoComplete}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </label>
+  )
+}
 
 /**
- * Sign in from an email (tap its link or type its 6-digit code; no password), see sync status, sign
- * out, or delete the account. The same account works in the planner app.
+ * Choose a new password: after opening a "reset your password" email, or from Settings.
  */
-export default function AccountPanel({ compact = false }) {
+export function NewPasswordForm({ onDone, onCancel }) {
   const { cloud } = useApp()
-  const [email, setEmail] = useState('')
-  const [code, setCode] = useState('')
-  const [step, setStep] = useState('email')
-  const [showCode, setShowCode] = useState(false)
+  const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const problem = password ? passwordProblem(password) : null
+
+  return (
+    <form
+      onSubmit={async (e) => {
+        e.preventDefault()
+        setBusy(true)
+        setError('')
+        try {
+          await cloud.setPassword(password)
+          onDone?.()
+        } catch (err) {
+          setError(authMessage(err))
+        } finally {
+          setBusy(false)
+        }
+      }}
+    >
+      {cloud.user?.email && (
+        <p className="muted" style={small}>
+          For <b>{cloud.user.email}</b>
+        </p>
+      )}
+      <PasswordField label="New password" value={password} onChange={setPassword} autoComplete="new-password" placeholder={`${MIN_PASSWORD}+ characters`} />
+      {problem && <p className="muted" style={small}>{problem}</p>}
+      {error && <p style={errorStyle}>{error}</p>}
+      <button className="btn btn--primary btn--block" style={{ marginTop: 'var(--s3)' }} type="submit" disabled={busy || !!passwordProblem(password)}>
+        {busy ? 'Saving…' : 'Save password'}
+      </button>
+      {onCancel && (
+        <button type="button" className="btn btn--ghost btn--block" style={{ marginTop: 'var(--s2)' }} onClick={onCancel}>
+          Cancel
+        </button>
+      )}
+    </form>
+  )
+}
+
+/**
+ * Create an account or sign in with an email and password, reset a forgotten password,
+ * see sync status, change the password, sign out, or delete the account. The same account
+ * works in the planner app.
+ */
+export default function AccountPanel({ compact = false, initialMode = 'signin' }) {
+  const { cloud } = useApp()
+  const [mode, setModeState] = useState(initialMode)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [changingPassword, setChangingPassword] = useState(false)
 
   if (!cloud.available) {
     return compact ? null : (
@@ -32,13 +105,20 @@ export default function AccountPanel({ compact = false }) {
     )
   }
 
+  const setMode = (next) => {
+    setModeState(next)
+    setError('')
+    setNotice('')
+  }
+
   const run = async (fn) => {
     setBusy(true)
     setError('')
+    setNotice('')
     try {
       await fn()
     } catch (err) {
-      setError(err?.message || 'Something went wrong. Try again in a moment.')
+      setError(authMessage(err))
     } finally {
       setBusy(false)
     }
@@ -51,20 +131,36 @@ export default function AccountPanel({ compact = false }) {
           Signed in as <b>{cloud.user.email}</b>
         </p>
         <p className="muted" style={small}>
-          {STATUS[cloud.status] || ''}
+          {(STATUS[cloud.status] || '').replace(/\.$/, '')}
           {cloud.status === 'synced' && cloud.lastSynced
             ? ` · ${new Date(cloud.lastSynced).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
             : ''}
-          . Your workouts also show up in the planner app when you use the same email there.
+          . Your workouts also show up in the planner app when you use the same account there.
         </p>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s2)' }}>
-          <button className="btn btn--ghost" onClick={cloud.syncNow}>
-            Sync now
-          </button>
-          <button className="btn btn--ghost" onClick={() => run(cloud.signOut)} disabled={busy}>
-            Sign out
-          </button>
-        </div>
+        {changingPassword ? (
+          <NewPasswordForm
+            onDone={() => {
+              setChangingPassword(false)
+              setNotice('Password saved.')
+            }}
+            onCancel={() => setChangingPassword(false)}
+          />
+        ) : (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s2)' }}>
+              <button className="btn btn--ghost" onClick={cloud.syncNow}>
+                Sync now
+              </button>
+              <button className="btn btn--ghost" onClick={() => run(cloud.signOut)} disabled={busy}>
+                Sign out
+              </button>
+            </div>
+            <button className="btn btn--ghost btn--block" style={{ marginTop: 'var(--s2)' }} onClick={() => setChangingPassword(true)}>
+              Change password
+            </button>
+          </>
+        )}
+        {notice && <p className="muted" style={small}>{notice}</p>}
         {confirmDelete ? (
           <div style={{ marginTop: 'var(--s3)' }}>
             <p className="muted" style={small}>
@@ -83,90 +179,127 @@ export default function AccountPanel({ compact = false }) {
             Delete account
           </button>
         )}
-        {error && <p style={{ ...small, color: 'var(--plate-red)' }}>{error}</p>}
+        {error && <p style={errorStyle}>{error}</p>}
       </div>
     )
   }
 
-  if (step === 'email') {
+  if (mode === 'check-confirm' || mode === 'check-reset') {
     return (
-      <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          run(async () => {
-            await cloud.sendCode(email.trim())
-            setStep('code')
-          })
-        }}
-      >
-        {!compact && (
-          <p className="muted" style={small}>
-            Sign in to use Rung on your phone and iPad. New here? The same step creates your account. No password.
-          </p>
+      <div>
+        <p style={{ margin: 0 }}>
+          We sent an email to <b>{email}</b>. Open it on this device and tap the button in it.
+        </p>
+        <p className="muted" style={small}>
+          {mode === 'check-confirm'
+            ? 'It says “Confirm your email”. That finishes your account and signs you in; this screen updates by itself.'
+            : 'It says “Reset password”. You’ll be signed in and asked to choose a new password.'}
+        </p>
+        {error && <p style={errorStyle}>{error}</p>}
+        {notice && <p className="muted" style={small}>{notice}</p>}
+        {mode === 'check-confirm' && (
+          <button
+            type="button"
+            className="btn btn--ghost btn--block"
+            disabled={busy}
+            onClick={() =>
+              run(async () => {
+                await cloud.resendConfirmation(email.trim())
+                setNotice('Sent again. Check your spam folder too.')
+              })
+            }
+          >
+            Send the email again
+          </button>
         )}
-        <label className="field">
-          <span className="field__label">Email</span>
-          <input
-            className="input"
-            type="email"
-            inputMode="email"
-            autoComplete="email"
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </label>
-        {error && <p style={{ ...small, color: 'var(--plate-red)' }}>{error}</p>}
-        <button className="btn btn--primary btn--block" style={{ marginTop: 'var(--s3)' }} type="submit" disabled={busy || !/.+@.+\..+/.test(email)}>
-          {busy ? 'Sending…' : 'Email me a sign-in link'}
+        <button type="button" className="btn btn--ghost btn--block" style={{ marginTop: 'var(--s2)' }} onClick={() => setMode('signin')}>
+          Back to sign in
         </button>
-      </form>
+      </div>
     )
   }
 
+  const emailOk = /.+@.+\..+/.test(email.trim())
+  const tooShort = mode === 'signup' && password ? passwordProblem(password) : null
+
   return (
-    <div>
-      <p style={{ margin: 0 }}>
-        Open the email we sent to <b>{email}</b> on this device and tap the button in it.
-      </p>
-      <p className="muted" style={small}>
-        The first time it says <b>“Confirm your email”</b>; after that it says <b>“Log in”</b>. Either one signs you in, and
-        this screen updates by itself.
-      </p>
-      {showCode ? (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            run(() => cloud.verifyCode(email.trim(), code.trim()))
-          }}
-        >
-          <label className="field">
-            <span className="field__label">Code</span>
-            <input
-              className="input"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={6}
-              placeholder="123456"
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-              style={{ letterSpacing: '0.4em', textAlign: 'center', fontFamily: 'var(--font-data)' }}
-              autoFocus
-            />
-          </label>
-          {error && <p style={{ ...small, color: 'var(--plate-red)' }}>{error}</p>}
-          <button className="btn btn--primary btn--block" style={{ marginTop: 'var(--s3)' }} type="submit" disabled={busy || code.length < 6}>
-            {busy ? 'Checking…' : 'Sign in'}
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        const addr = email.trim()
+        if (mode === 'signin') run(() => cloud.signIn(addr, password))
+        if (mode === 'signup') {
+          run(async () => {
+            const result = await cloud.signUp(addr, password)
+            if (result === 'confirm-email') setMode('check-confirm')
+            if (result === 'exists') {
+              setMode('signin')
+              setError('There’s already an account with this email. Sign in instead.')
+            }
+          })
+        }
+        if (mode === 'forgot') {
+          run(async () => {
+            await cloud.sendPasswordReset(addr)
+            setMode('check-reset')
+          })
+        }
+      }}
+    >
+      {!compact && (
+        <p className="muted" style={small}>
+          {mode === 'forgot'
+            ? 'Enter your account’s email and we’ll send a link to choose a new password.'
+            : 'Use Rung on your phone and iPad. The same account works in the planner app.'}
+        </p>
+      )}
+      <label className="field">
+        <span className="field__label">Email</span>
+        <input
+          className="input"
+          type="email"
+          inputMode="email"
+          autoComplete="email"
+          placeholder="you@example.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+      </label>
+      {mode !== 'forgot' && (
+        <div style={{ marginTop: 'var(--s2)' }}>
+          <PasswordField
+            value={password}
+            onChange={setPassword}
+            autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+            placeholder={mode === 'signup' ? `${MIN_PASSWORD}+ characters` : ''}
+          />
+        </div>
+      )}
+      {tooShort && <p className="muted" style={small}>{tooShort}</p>}
+      {error && <p style={errorStyle}>{error}</p>}
+      <button
+        className="btn btn--primary btn--block"
+        style={{ marginTop: 'var(--s3)' }}
+        type="submit"
+        disabled={busy || !emailOk || (mode === 'signin' && !password) || (mode === 'signup' && !!passwordProblem(password))}
+      >
+        {busy ? 'One moment…' : mode === 'signin' ? 'Sign in' : mode === 'signup' ? 'Create account' : 'Email me a reset link'}
+      </button>
+      {mode === 'signin' && (
+        <>
+          <button type="button" className="btn btn--ghost btn--block" style={{ marginTop: 'var(--s2)' }} onClick={() => setMode('signup')}>
+            New here? Create an account
           </button>
-        </form>
-      ) : (
-        <button type="button" className="btn btn--ghost btn--block" onClick={() => setShowCode(true)}>
-          My email has a 6-digit code instead
+          <button type="button" className="btn btn--ghost btn--block" onClick={() => setMode('forgot')}>
+            Forgot your password?
+          </button>
+        </>
+      )}
+      {mode !== 'signin' && (
+        <button type="button" className="btn btn--ghost btn--block" style={{ marginTop: 'var(--s2)' }} onClick={() => setMode('signin')}>
+          {mode === 'signup' ? 'Already have an account? Sign in' : 'Back to sign in'}
         </button>
       )}
-      <button type="button" className="btn btn--ghost btn--block" style={{ marginTop: 'var(--s2)' }} onClick={() => setStep('email')}>
-        Use a different email
-      </button>
-    </div>
+    </form>
   )
 }

@@ -10,6 +10,7 @@ import History from './screens/History.jsx'
 import Calendar from './screens/Calendar.jsx'
 import Settings from './screens/Settings.jsx'
 import PlanFinishedBanner from './components/PlanFinishedBanner.jsx'
+import { NewPasswordForm } from './components/AccountPanel.jsx'
 
 /**
  * Routing is a single piece of state rather than a router library.
@@ -17,7 +18,7 @@ import PlanFinishedBanner from './components/PlanFinishedBanner.jsx'
  * Capacitor WebView has no real URL bar to sync with anyway.
  */
 export default function App() {
-  const { state } = useApp()
+  const { state, cloud } = useApp()
   const [route, setRoute] = useState('today')
   const [params, setParams] = useState({})
 
@@ -26,6 +27,23 @@ export default function App() {
   useEffect(() => {
     document.querySelector('.scroll')?.scrollTo({ top: 0 })
   }, [route])
+
+  // Arrived from a "reset your password" email: choose the new password first.
+  if (cloud.recovering) {
+    return (
+      <div className="shell">
+        <header className="appbar">
+          <div>
+            <span className="appbar__eyebrow">Account</span>
+            <h1 className="appbar__title">New password</h1>
+          </div>
+        </header>
+        <div className="scroll" style={{ paddingTop: 'var(--s6)' }}>
+          <NewPasswordForm onDone={cloud.cancelRecovery} onCancel={cloud.cancelRecovery} />
+        </div>
+      </div>
+    )
+  }
 
   if (!state.onboarded) return <Onboarding />
 

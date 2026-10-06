@@ -98,7 +98,7 @@ Everything lives in `localStorage` under one versioned key, behind `load()` / `s
 in `src/lib/storage.js`.
 
 **Accounts and sync (optional).** With `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` set, people can sign
-in from an emailed link or 6-digit code (no password) from Settings or the first onboarding screen, and Rung syncs across
+in with an email and password from Settings or the first onboarding screen, and Rung syncs across
 their phone and iPad. Without those variables it stays device-only, exactly as before.
 
 - `src/lib/sync.js` + `src/lib/merge.js`: local-first sync to one `workout_state` row per account with a version

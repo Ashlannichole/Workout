@@ -107,7 +107,7 @@ export default function Onboarding() {
                   <AccountPanel compact />
                 ) : (
                   <button className="btn btn--ghost btn--block" onClick={() => setSigningIn(true)}>
-                    Already use Rung on another device? Sign in
+                    Already have an account? Sign in
                   </button>
                 )}
               </div>

@@ -47,6 +47,7 @@ export function useCloud(state, dispatch) {
   const [user, setUser] = useState(null)
   const [status, setStatus] = useState(syncAvailable ? 'signed-out' : 'unavailable')
   const [lastSynced, setLastSynced] = useState(null)
+  const [recovering, setRecovering] = useState(false)
   const stateRef = useRef(state)
   stateRef.current = state
   const metaRef = useRef(loadSyncMeta())
@@ -57,7 +58,11 @@ export function useCloud(state, dispatch) {
   useEffect(() => {
     if (!supabase) return
     supabase.auth.getSession().then(({ data }) => setUser(data.session?.user ?? null))
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => setUser(session?.user ?? null))
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null)
+      // Arrived from a "reset your password" email: ask for the new password.
+      if (event === 'PASSWORD_RECOVERY') setRecovering(true)
+    })
     return () => data.subscription.unsubscribe()
   }, [])
 
@@ -129,19 +134,41 @@ export function useCloud(state, dispatch) {
     }
   }, [user, syncNow])
 
-  const sendCode = useCallback(async (email) => {
-    // The email has a sign-in link, plus a 6-digit code when the project's template includes {{ .Token }}.
-    // The link comes back to this same site, which signs in on arrival.
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: true, emailRedirectTo: window.location.origin + window.location.pathname },
-    })
+  // Links in account emails (confirm your email, reset your password) come back to this same page.
+  const here = () => window.location.origin + window.location.pathname
+
+  /**
+   * Create an account with an email and password. Returns 'signed-in', 'confirm-email'
+   * (a confirmation email went out), or 'exists' (that email already has an account).
+   */
+  const signUp = useCallback(async (email, password) => {
+    const { data, error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: here() } })
+    if (error) throw error
+    if (data.session) return 'signed-in'
+    if (data.user && data.user.identities?.length === 0) return 'exists'
+    return 'confirm-email'
+  }, [])
+
+  const signIn = useCallback(async (email, password) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error
   }, [])
 
-  const verifyCode = useCallback(async (email, token) => {
-    const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' })
+  const resendConfirmation = useCallback(async (email) => {
+    const { error } = await supabase.auth.resend({ type: 'signup', email, options: { emailRedirectTo: here() } })
     if (error) throw error
+  }, [])
+
+  /** Email a "reset your password" link; opening it signs in and asks for a new password. */
+  const sendPasswordReset = useCallback(async (email) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: here() })
+    if (error) throw error
+  }, [])
+
+  const setPassword = useCallback(async (password) => {
+    const { error } = await supabase.auth.updateUser({ password })
+    if (error) throw error
+    setRecovering(false)
   }, [])
 
   const forget = useCallback(() => {
@@ -168,5 +195,20 @@ export function useCloud(state, dispatch) {
     forget()
   }, [forget])
 
-  return { available: syncAvailable, user, status, lastSynced, sendCode, verifyCode, signOut, deleteAccount, syncNow }
+  return {
+    available: syncAvailable,
+    user,
+    status,
+    lastSynced,
+    recovering,
+    cancelRecovery: () => setRecovering(false),
+    signUp,
+    signIn,
+    resendConfirmation,
+    sendPasswordReset,
+    setPassword,
+    signOut,
+    deleteAccount,
+    syncNow,
+  }
 }
