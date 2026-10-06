@@ -130,7 +130,12 @@ export function useCloud(state, dispatch) {
   }, [user, syncNow])
 
   const sendCode = useCallback(async (email) => {
-    const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true } })
+    // The email has a sign-in link, plus a 6-digit code when the project's template includes {{ .Token }}.
+    // The link comes back to this same site, which signs in on arrival.
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: true, emailRedirectTo: window.location.origin + window.location.pathname },
+    })
     if (error) throw error
   }, [])
 

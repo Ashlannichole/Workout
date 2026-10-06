@@ -11,7 +11,7 @@ const STATUS = {
 const small = { fontSize: 'var(--t-2xs)', margin: 'var(--s1) 0 var(--s3)' }
 
 /**
- * Sign in with an emailed 6-digit code (no password), see sync status, sign
+ * Sign in from an email (tap its link or type its 6-digit code; no password), see sync status, sign
  * out, or delete the account. The same account works in the planner app.
  */
 export default function AccountPanel({ compact = false }) {
@@ -117,7 +117,7 @@ export default function AccountPanel({ compact = false }) {
         </label>
         {error && <p style={{ ...small, color: 'var(--plate-red)' }}>{error}</p>}
         <button className="btn btn--primary btn--block" style={{ marginTop: 'var(--s3)' }} type="submit" disabled={busy || !/.+@.+\..+/.test(email)}>
-          {busy ? 'Sending…' : 'Email me a code'}
+          {busy ? 'Sending…' : 'Email me a sign-in link'}
         </button>
       </form>
     )
@@ -131,7 +131,8 @@ export default function AccountPanel({ compact = false }) {
       }}
     >
       <p className="muted" style={small}>
-        We sent a 6-digit code to <b>{email}</b>.
+        We sent an email to <b>{email}</b>. Tap the <b>sign-in link</b> in it on this device. If it shows a 6-digit code
+        instead, type it here.
       </p>
       <label className="field">
         <span className="field__label">Code</span>
