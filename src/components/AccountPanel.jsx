@@ -19,6 +19,7 @@ export default function AccountPanel({ compact = false }) {
   const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
   const [step, setStep] = useState('email')
+  const [showCode, setShowCode] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -124,37 +125,48 @@ export default function AccountPanel({ compact = false }) {
   }
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault()
-        run(() => cloud.verifyCode(email.trim(), code.trim()))
-      }}
-    >
-      <p className="muted" style={small}>
-        We sent an email to <b>{email}</b>. Tap the <b>sign-in link</b> in it on this device. If it shows a 6-digit code
-        instead, type it here.
+    <div>
+      <p style={{ margin: 0 }}>
+        Open the email we sent to <b>{email}</b> on this device and tap the button in it.
       </p>
-      <label className="field">
-        <span className="field__label">Code</span>
-        <input
-          className="input"
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          maxLength={6}
-          placeholder="123456"
-          value={code}
-          onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-          style={{ letterSpacing: '0.4em', textAlign: 'center', fontFamily: 'var(--font-data)' }}
-          autoFocus
-        />
-      </label>
-      {error && <p style={{ ...small, color: 'var(--plate-red)' }}>{error}</p>}
-      <button className="btn btn--primary btn--block" style={{ marginTop: 'var(--s3)' }} type="submit" disabled={busy || code.length < 6}>
-        {busy ? 'Checking…' : 'Sign in'}
-      </button>
+      <p className="muted" style={small}>
+        The first time it says <b>“Confirm your email”</b>; after that it says <b>“Log in”</b>. Either one signs you in, and
+        this screen updates by itself.
+      </p>
+      {showCode ? (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            run(() => cloud.verifyCode(email.trim(), code.trim()))
+          }}
+        >
+          <label className="field">
+            <span className="field__label">Code</span>
+            <input
+              className="input"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              placeholder="123456"
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+              style={{ letterSpacing: '0.4em', textAlign: 'center', fontFamily: 'var(--font-data)' }}
+              autoFocus
+            />
+          </label>
+          {error && <p style={{ ...small, color: 'var(--plate-red)' }}>{error}</p>}
+          <button className="btn btn--primary btn--block" style={{ marginTop: 'var(--s3)' }} type="submit" disabled={busy || code.length < 6}>
+            {busy ? 'Checking…' : 'Sign in'}
+          </button>
+        </form>
+      ) : (
+        <button type="button" className="btn btn--ghost btn--block" onClick={() => setShowCode(true)}>
+          My email has a 6-digit code instead
+        </button>
+      )}
       <button type="button" className="btn btn--ghost btn--block" style={{ marginTop: 'var(--s2)' }} onClick={() => setStep('email')}>
         Use a different email
       </button>
-    </form>
+    </div>
   )
 }
