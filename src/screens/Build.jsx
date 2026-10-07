@@ -152,7 +152,7 @@ export default function Build({ onNavigate }) {
 
   return (
     <>
-      <AppBar eyebrow="New plan" title="Build" />
+      <AppBar eyebrow="New plan" title="Build" action="Programs" onAction={() => onNavigate('programs')} />
       <div className="scroll">
         <section className="section" style={{ marginTop: 'var(--s5)' }}>
           <span className="field__label">Equipment</span>

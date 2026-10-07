@@ -56,6 +56,13 @@ export default function Today({ onNavigate }) {
             <button className="btn btn--primary" onClick={() => onNavigate('build')}>
               Build a session
             </button>
+            <button
+              className="btn btn--ghost"
+              style={{ marginTop: 'var(--s3)' }}
+              onClick={() => onNavigate('programs')}
+            >
+              Or start a program
+            </button>
           </div>
         </div>
       </>

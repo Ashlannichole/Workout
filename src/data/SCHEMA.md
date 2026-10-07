@@ -10,7 +10,7 @@ these fields, so adding an exercise never requires touching generator code.
 | `primary` | `string[]` | Muscle groups this exercise is selected *for*. The generator matches against this first. |
 | `secondary` | `string[]` | Also worked. Used to fill a session out and to avoid stacking redundant work. |
 | `equipment` | `string[]` | Which tiers this is available in: `gym`, `home`, `bodyweight`. An exercise listing `bodyweight` is available in all three tiers, so list every tier it works in. |
-| `modality` | `string` | One of `weightlifting`, `calisthenics`, `hiit`, `cardio`, `pilates`. |
+| `modality` | `string` | One of `weightlifting`, `calisthenics`, `hiit`, `cardio`, `pilates`, `stretching`. |
 | `difficulty` | `1 \| 2 \| 3` | 1 beginner, 2 intermediate, 3 advanced. Gated by the user's activity level. |
 | `loadType` | `string` | `barbell`, `dumbbell`, `machine`, `cable`, `bodyweight`, `banded`, `timed`. Decides whether we suggest a weight at all, and how we round it. |
 | `compound` | `boolean` | Compound lifts get scheduled first in a session, while the user is fresh. |
@@ -20,6 +20,7 @@ these fields, so adding an exercise never requires touching generator code.
 | `startingLoadFactor` | `number \| null` | Fraction of bodyweight used to suggest a week-1 starting weight. `null` = unloaded. Deliberately conservative; the user can always override. |
 | `homeAlternativeId` | `string \| null` | The substitute to swap in when the user has no gym. Resolved by `resolveForEquipment()`. |
 | `cue` | `string` | One short form cue, shown on the logging screen. Keeps the user's eyes on the lift instead of a manual. |
+| `family` | `string` (optional) | Groups near-duplicate movements so the generator never serves two in one session (e.g. `kettlebell-swing`). Only needed when the substitute chain (`homeAlternativeId`) doesn't already imply it — mainly cardio/HIIT, where "do this at home instead" doesn't mean "this is the same movement." |
 
 ## Sets and reps
 
