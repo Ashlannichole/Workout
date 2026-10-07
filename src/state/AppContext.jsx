@@ -226,6 +226,37 @@ export function AppProvider({ children }) {
       return { ...result, muscleGroups, durationMin }
     }
 
+    /** Instantiate a named program (src/data/programs.js) into a real plan, same as Build.jsx's savePlan(). */
+    function startProgram(program) {
+      const equipment = state.profile.equipment
+      const days = program.split.map((d, i) => {
+        const built = buildDay({
+          muscleGroups: d.muscleGroups,
+          durationMin: program.durationMin,
+          goal: program.goal,
+          equipment,
+          modality: program.modality,
+          seed: Date.now() + i,
+        })
+        return {
+          id: uid(),
+          name: d.name,
+          muscleGroups: d.muscleGroups,
+          durationMin: program.durationMin,
+          exercises: built.exercises,
+        }
+      })
+      return createPlan({
+        name: program.name,
+        weeks: program.weeks,
+        goal: program.goal,
+        equipment,
+        modality: program.modality,
+        days,
+        frequency: program.frequency,
+      })
+    }
+
     function getLog(key) {
       return state.logs[logId(key)] ?? null
     }
@@ -318,6 +349,7 @@ export function AppProvider({ children }) {
       activePlan,
       createPlan,
       buildDay,
+      startProgram,
       getLog,
       setLog,
       prescriptionFor,

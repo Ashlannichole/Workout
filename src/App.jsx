@@ -4,6 +4,7 @@ import TabBar from './components/TabBar.jsx'
 import Onboarding from './screens/Onboarding.jsx'
 import Today from './screens/Today.jsx'
 import Build from './screens/Build.jsx'
+import Programs from './screens/Programs.jsx'
 import Plan from './screens/Plan.jsx'
 import Session from './screens/Session.jsx'
 import History from './screens/History.jsx'
@@ -55,6 +56,7 @@ export default function App() {
   const screens = {
     today: <Today onNavigate={navigate} />,
     build: <Build onNavigate={navigate} />,
+    programs: <Programs onNavigate={navigate} />,
     plan: <Plan planId={params.planId} onNavigate={navigate} />,
     session: <Session planId={params.planId} dayId={params.dayId} onNavigate={navigate} />,
     calendar: <Calendar onNavigate={navigate} />,
@@ -62,9 +64,17 @@ export default function App() {
     history: <History onNavigate={navigate} />,
   }
 
-  // Session, Settings, and History are detail views pushed on top of a tab,
-  // so they highlight the tab they came from rather than getting their own.
-  const activeTab = route === 'session' ? 'plan' : route === 'settings' || route === 'history' ? 'today' : route
+  // Session, Programs, Settings, and History are detail views pushed on top
+  // of a tab, so they highlight the tab they came from rather than getting
+  // their own.
+  const activeTab =
+    route === 'session'
+      ? 'plan'
+      : route === 'programs'
+        ? 'build'
+        : route === 'settings' || route === 'history'
+          ? 'today'
+          : route
 
   return (
     <div className="shell">
